@@ -12,18 +12,20 @@ def create_user(data: dict):
     ).decode()
 
     with get_db() as db:
+        # Email kontrol
         db.execute(
-            "SELECT email FROM kullanicilar WHERE email = ?",
+            "SELECT email FROM kullanicilar WHERE email = %s",
             (data["email"],)
         )
         if db.fetchone():
             raise ValueError("Bu email zaten kayıtlı")
 
+        # Kullanıcı ekleme
         db.execute("""
             INSERT INTO kullanicilar 
             (isim, email, sifre, dogum_tarihi, cinsiyet, kronik_hastalik, olusturma_tarihi)
-            OUTPUT INSERTED.id
-            VALUES (?, ?, ?, ?, ?, ?, GETDATE())
+            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            RETURNING id
         """, (
             data["isim"],
             data["email"],
@@ -33,7 +35,7 @@ def create_user(data: dict):
             data["kronik_hastalik"]
         ))
 
-        user_id = db.fetchone()[0]
+        user_id = db.fetchone()['id']
 
     return user_id
 
@@ -42,19 +44,20 @@ def create_user(data: dict):
 # --------------------------
 def set_reset_code(email: str):
     with get_db() as db:
-        user = db.execute(
-            "SELECT * FROM kullanicilar WHERE email = ?",
+        db.execute(
+            "SELECT * FROM kullanicilar WHERE email = %s",
             (email,)
-        ).fetchone()
+        )
+        user = db.fetchone()
         if not user:
             return None
 
         # 6 haneli rastgele kod
         code = "".join(random.choices("0123456789", k=6))
 
-        # DB’ye kodu kaydet (reset_expire eklenebilir)
+        # DB’ye kodu kaydet
         db.execute(
-            "UPDATE kullanicilar SET reset_code = ? WHERE email = ?",
+            "UPDATE kullanicilar SET reset_code = %s WHERE email = %s",
             (code, email)
         )
 
@@ -67,11 +70,12 @@ def set_reset_code(email: str):
 # --------------------------
 def verify_reset_code(email: str, code: str):
     with get_db() as db:
-        user = db.execute(
-            "SELECT reset_code FROM kullanicilar WHERE email = ?",
+        db.execute(
+            "SELECT reset_code FROM kullanicilar WHERE email = %s",
             (email,)
-        ).fetchone()
-        return user and user.reset_code == code
+        )
+        user = db.fetchone()
+        return user and user['reset_code'] == code
 
 # --------------------------
 # Şifreyi Güncelleme
@@ -80,7 +84,7 @@ def reset_password(email: str, new_password: str):
     hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
     with get_db() as db:
         db.execute(
-            "UPDATE kullanicilar SET sifre = ?, reset_code = NULL WHERE email = ?",
+            "UPDATE kullanicilar SET sifre = %s, reset_code = NULL WHERE email = %s",
             (hashed, email)
         )
         return True

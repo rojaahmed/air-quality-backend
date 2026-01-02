@@ -11,5 +11,5 @@ email-validator
 bcrypt
 passlib[bcrypt]
 python-jose
-pyodbc
 PyJWT
+psycopg2-binary
