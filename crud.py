@@ -35,7 +35,7 @@ def create_user(data: dict):
             data["kronik_hastalik"]
         ))
 
-        user_id = db.fetchone()['id']
+    user_id = db.fetchone()[0]
 
     return user_id
 
@@ -75,7 +75,8 @@ def verify_reset_code(email: str, code: str):
             (email,)
         )
         user = db.fetchone()
-        return user and user['reset_code'] == code
+        return user and user[0] == code
+
 
 # --------------------------
 # Şifreyi Güncelleme
