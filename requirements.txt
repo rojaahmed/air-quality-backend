@@ -8,3 +8,5 @@ scikit-learn
 catboost
 pydantic[email]
 email-validator
+bcrypt
+
