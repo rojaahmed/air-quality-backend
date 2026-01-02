@@ -9,4 +9,5 @@ catboost
 pydantic[email]
 email-validator
 bcrypt
-
+passlib[bcrypt]
+python-jose
