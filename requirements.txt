@@ -6,3 +6,5 @@ numpy
 pandas
 scikit-learn
 catboost
+pydantic[email]
+email-validator
