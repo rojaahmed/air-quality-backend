@@ -4,10 +4,10 @@ import math
 def find_nearest_station(lat: float, lon: float):
     with get_db() as db:
         db.execute("""
-            SELECT id, isim, enlem, boylam
+            SELECT id, isim, enlem, boylam, Konum
             FROM istasyonlar
         """)
-        stations = db.fetchall()  # artık dict olarak gelir
+        stations = db.fetchall()
 
     def distance(lat1, lon1, lat2, lon2):
         return math.sqrt((lat1 - lat2)**2 + (lon1 - lon2)**2)
@@ -16,7 +16,7 @@ def find_nearest_station(lat: float, lon: float):
     min_dist = float("inf")
 
     for s in stations:
-        d = distance(lat, lon, s['enlem'], s['boylam'])
+        d = distance(lat, lon, s[2], s[3])  # enlem, boylam
         if d < min_dist:
             min_dist = d
             nearest = s
@@ -25,6 +25,6 @@ def find_nearest_station(lat: float, lon: float):
         return None
 
     return {
-        "id": nearest['id'],
-        "name": nearest['isim']
+        "id": nearest[0],
+        "name": nearest[1]
     }

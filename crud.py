@@ -14,7 +14,7 @@ def create_user(data: dict):
     with get_db() as db:
         # Email kontrol
         db.execute(
-            "SELECT email FROM kullanicilar WHERE email = %s",
+            "SELECT 1 FROM kullanicilar WHERE email = %s",
             (data["email"],)
         )
         if db.fetchone():
@@ -31,13 +31,14 @@ def create_user(data: dict):
             data["email"],
             hashed,
             data["dogum_tarihi"],
-            data["cinsiyet"],
-            data["kronik_hastalik"]
+            data.get("cinsiyet"),
+            data.get("kronik_hastalik")
         ))
 
-    user_id = db.fetchone()[0]
+        user_id = db.fetchone()[0]  # 👈 MUTLAKA with İÇİNDE
 
     return user_id
+
 
 # --------------------------
 # Forget Password - Reset Kodu Oluştur
@@ -45,25 +46,23 @@ def create_user(data: dict):
 def set_reset_code(email: str):
     with get_db() as db:
         db.execute(
-            "SELECT * FROM kullanicilar WHERE email = %s",
+            "SELECT id FROM kullanicilar WHERE email = %s",
             (email,)
         )
         user = db.fetchone()
         if not user:
             return None
 
-        # 6 haneli rastgele kod
         code = "".join(random.choices("0123456789", k=6))
 
-        # DB’ye kodu kaydet
         db.execute(
             "UPDATE kullanicilar SET reset_code = %s WHERE email = %s",
             (code, email)
         )
 
-        print(f"[DEBUG] Reset code for {email}: {code}")  # terminalde göster
-
+        print(f"[DEBUG] Reset code for {email}: {code}")
         return code
+
 
 # --------------------------
 # Kod Doğrulama
@@ -75,7 +74,7 @@ def verify_reset_code(email: str, code: str):
             (email,)
         )
         user = db.fetchone()
-        return user and user[0] == code
+        return user is not None and user[0] == code
 
 
 # --------------------------
@@ -88,4 +87,4 @@ def reset_password(email: str, new_password: str):
             "UPDATE kullanicilar SET sifre = %s, reset_code = NULL WHERE email = %s",
             (hashed, email)
         )
-        return True
+    return True

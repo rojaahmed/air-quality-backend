@@ -3,15 +3,17 @@ from datetime import datetime, date, timedelta
 
 DEFAULT_STATION = "Gaziantep"
 
+# -------------------------
 # 7 GÜNLÜK TAHMİN (GÜNLÜK)
+# -------------------------
 def get_7_day_forecast(station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
             SELECT 
-                g.tahmin_tarihi,
-                p.isim AS parametre,
-                AVG(g.tahmin) AS tahmin,
-                MAX(g.kategori) AS kategori
+                g.tahmin_tarihi,   -- 0
+                p.isim,            -- 1 parametre
+                AVG(g.tahmin),     -- 2 tahmin
+                MAX(g.kategori)    -- 3 kategori
             FROM gunluk_tahmin_catboost g
             JOIN istasyonlar i ON i.id = g.istasyon_id
             JOIN parametreler p ON p.id = g.parametre_id
@@ -25,14 +27,17 @@ def get_7_day_forecast(station_name: str = DEFAULT_STATION):
     return _format_forecast(rows, "daily", station_name)
 
 
+# -------------------------
+# 7 SAATLİK TAHMİN
+# -------------------------
 def get_7_hour_forecast(station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
             SELECT 
-                s.tarih_saat,
-                p.isim AS parametre,
-                s.tahmin,
-                s.kategori
+                s.tarih_saat,  -- 0
+                p.isim,        -- 1
+                s.tahmin,      -- 2
+                s.kategori     -- 3
             FROM saatlik_tahmin_catboost s
             JOIN istasyonlar i ON i.id = s.istasyon_id
             JOIN parametreler p ON p.id = s.parametre_id
@@ -45,6 +50,9 @@ def get_7_hour_forecast(station_name: str = DEFAULT_STATION):
     return _format_forecast(rows, "hourly", station_name)
 
 
+# -------------------------
+# ORTAK FORMATLAYICI
+# -------------------------
 def _format_forecast(rows, forecast_type, station_name):
     if not rows:
         return None
@@ -53,18 +61,19 @@ def _format_forecast(rows, forecast_type, station_name):
     parameters = {}
 
     for r in rows:
-        label = str(r[0])
+        label = str(r[0])  # tarih / saat
 
         if label not in labels:
             labels.append(label)
 
-        param = r['parametre']
+        param = r[1]  # parametre adı
+
         if param not in parameters:
             parameters[param] = []
 
         parameters[param].append({
-            "value": round(float(r['tahmin']), 2),
-            "category": r['kategori']
+            "value": round(float(r[2]), 2),
+            "category": r[3]
         })
 
     return {
@@ -72,15 +81,15 @@ def _format_forecast(rows, forecast_type, station_name):
         "type": forecast_type,
         "labels": labels,
         "parameters": [
-            {
-                "name": param,
-                "values": values
-            }
-            for param, values in parameters.items()
+            {"name": p, "values": v}
+            for p, v in parameters.items()
         ]
     }
 
 
+# -------------------------
+# SONRAKİ 7 SAAT
+# -------------------------
 def get_next_7_hours(station_name: str = DEFAULT_STATION):
     now = datetime.now()
     end_time = now + timedelta(hours=7)
@@ -88,10 +97,10 @@ def get_next_7_hours(station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
             SELECT
-                s.tarih_saat,
-                p.isim AS parametre,
-                s.tahmin,
-                s.kategori
+                s.tarih_saat,  -- 0
+                p.isim,        -- 1
+                s.tahmin,      -- 2
+                s.kategori     -- 3
             FROM saatlik_tahmin_catboost s
             JOIN istasyonlar i ON i.id = s.istasyon_id
             JOIN parametreler p ON p.id = s.parametre_id
@@ -108,15 +117,12 @@ def get_next_7_hours(station_name: str = DEFAULT_STATION):
     hourly = {}
 
     for r in rows:
-        hour = r['tarih_saat'].strftime("%H:00")
+        hour = r[0].strftime("%H:00")
 
         if hour not in hourly:
-            hourly[hour] = {
-                "hour": hour,
-                "pollutants": {}
-            }
+            hourly[hour] = {"hour": hour, "pollutants": {}}
 
-        hourly[hour]["pollutants"][r['parametre']] = round(float(r['tahmin']), 2)
+        hourly[hour]["pollutants"][r[1]] = round(float(r[2]), 2)
 
     return {
         "station": station_name,
@@ -125,11 +131,14 @@ def get_next_7_hours(station_name: str = DEFAULT_STATION):
     }
 
 
+# -------------------------
+# SEÇİLİ GÜN – SONRAKİ 7 SAAT
+# -------------------------
 def get_selected_day_next_7_hours(selected_date: date, station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
             WITH last_run AS (
-                SELECT MAX(olusturma_tarihi) AS last_time
+                SELECT MAX(olusturma_tarihi)
                 FROM saatlik_tahmin_catboost
                 WHERE istasyon_id = (
                     SELECT id FROM istasyonlar WHERE isim = %s
@@ -137,17 +146,16 @@ def get_selected_day_next_7_hours(selected_date: date, station_name: str = DEFAU
                   AND CAST(tarih_saat AS DATE) = %s
             )
             SELECT
-                s.tarih_saat,
-                p.isim AS parametre,
-                s.tahmin,
-                s.kategori
+                s.tarih_saat,  -- 0
+                p.isim,        -- 1
+                s.tahmin,      -- 2
+                s.kategori     -- 3
             FROM saatlik_tahmin_catboost s
             JOIN istasyonlar i ON i.id = s.istasyon_id
             JOIN parametreler p ON p.id = s.parametre_id
-            JOIN last_run lr ON s.olusturma_tarihi >= lr.last_time - INTERVAL '5 seconds'
             WHERE i.isim = %s
               AND CAST(s.tarih_saat AS DATE) = %s
-            ORDER BY s.tarih_saat;
+            ORDER BY s.tarih_saat
         """, (station_name, selected_date, station_name, selected_date))
         rows = db.fetchall()
 
@@ -157,17 +165,14 @@ def get_selected_day_next_7_hours(selected_date: date, station_name: str = DEFAU
     hourly = {}
 
     for r in rows:
-        hour_key = r['tarih_saat'].strftime("%H:00")
+        hour = r[0].strftime("%H:00")
 
-        if hour_key not in hourly:
-            hourly[hour_key] = {
-                "hour": hour_key,
-                "pollutants": {}
-            }
+        if hour not in hourly:
+            hourly[hour] = {"hour": hour, "pollutants": {}}
 
-        hourly[hour_key]["pollutants"][r['parametre']] = {
-            "value": round(float(r['tahmin']), 2),
-            "category": r['kategori']
+        hourly[hour]["pollutants"][r[1]] = {
+            "value": round(float(r[2]), 2),
+            "category": r[3]
         }
 
     return {
