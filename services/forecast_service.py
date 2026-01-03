@@ -2,29 +2,43 @@ from database import get_db
 from datetime import datetime, date, timedelta
 
 DEFAULT_STATION = "Gaziantep"
+STATION_MAP = {
+    "gaziantep": "Gaziantep",
+    "atapark": "Atapark",
+    "fevzicakmak": "Fevzi Çakmak",
+    "beydilli": "Beydilli",
+    "nizip": "Nizip",
+    "gaskid6": "Gaski D6"
+}
 
 # -------------------------
 # 7 GÜNLÜK TAHMİN (GÜNLÜK)
 # -------------------------
-def get_7_day_forecast(station_name: str = DEFAULT_STATION):
+def get_7_hour_forecast(station_name: str = "Gaziantep"):
+    key = station_name.lower().replace(" ", "")
+    station = STATION_MAP.get(key)
+
+    if not station:
+        return None
+
     with get_db() as db:
         db.execute("""
             SELECT 
-                g.tahmin_tarihi,   -- 0
-                p.isim,            -- 1 parametre
-                AVG(g.tahmin),     -- 2 tahmin
-                MAX(g.kategori)    -- 3 kategori
-            FROM gunluk_tahmin_catboost g
-            JOIN istasyonlar i ON i.id = g.istasyon_id
-            JOIN parametreler p ON p.id = g.parametre_id
+                s.tarih_saat,
+                p.isim AS parametre,
+                s.tahmin,
+                s.kategori
+            FROM saatlik_tahmin_catboost s
+            JOIN istasyonlar i ON i.id = s.istasyon_id
+            JOIN parametreler p ON p.id = s.parametre_id
             WHERE i.isim = %s
-              AND g.tahmin_tarihi >= CURRENT_DATE
-            GROUP BY g.tahmin_tarihi, p.isim
-            ORDER BY g.tahmin_tarihi
-        """, (station_name,))
+              AND s.tarih_saat >= CURRENT_TIMESTAMP
+            ORDER BY s.tarih_saat
+        """, (station,))
         rows = db.fetchall()
 
-    return _format_forecast(rows, "daily", station_name)
+    return _format_forecast(rows, "hourly", station)
+
 
 
 # -------------------------
