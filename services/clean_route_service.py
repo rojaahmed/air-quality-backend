@@ -1,6 +1,6 @@
 import heapq
 from database import get_db
-from utils import haversine
+from utils1 import haversine
 
 # -------------------------
 # İSTASYONLARI VERİTABANINDAN ÇEK
