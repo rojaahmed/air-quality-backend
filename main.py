@@ -16,6 +16,7 @@ from services.clean_route_service import idw_aqi
 from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
+
 app = FastAPI()
 
 app.add_middleware(
