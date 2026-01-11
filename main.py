@@ -12,7 +12,8 @@ from services.forecast_service import (
 from datetime import date
 from services.location_service import find_nearest_station
 from fastapi.middleware.cors import CORSMiddleware
-
+from services.clean_route_service import idw_aqi
+from services.clean_route_service import a_star
 app = FastAPI()
 
 app.add_middleware(
@@ -106,3 +107,20 @@ def selected_day_next_7_hours(
 @app.get("/station/nearest")
 def nearest_station(lat: float, lon: float):
     return find_nearest_station(lat, lon)
+
+@app.get("/aqi-at-point")
+def aqi_at_point(lat: float, lon: float):
+    return {
+        "aqi": idw_aqi(lat, lon)
+    }
+
+@app.post("/clean-route")
+def clean_route(data: dict):
+    start = (data["start_lat"], data["start_lon"])
+    end = (data["end_lat"], data["end_lon"])
+
+    if data["type"] == "shortest":
+        return {"route": [start, end]}
+
+    route = a_star(start, end)
+    return {"route": route}
