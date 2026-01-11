@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.clean_route_service import idw_aqi
 from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
+from services.aqi_map_service import get_aqi_map_points
 app = FastAPI()
 
 app.add_middleware(
@@ -128,3 +129,7 @@ def clean_route(req: CleanRouteRequest):
         (req.end_lat, req.end_lon)
     )
     return {"route": route}
+
+@app.get("/aqi-map")
+def aqi_map():
+    return get_aqi_map_points()
