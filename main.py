@@ -14,6 +14,8 @@ from services.location_service import find_nearest_station
 from fastapi.middleware.cors import CORSMiddleware
 from services.clean_route_service import idw_aqi
 from services.clean_route_service import a_star
+from services.clean_route_service import find_clean_route
+from pydantic import BaseModel
 app = FastAPI()
 
 app.add_middleware(
@@ -114,15 +116,16 @@ def aqi_at_point(lat: float, lon: float):
         "aqi": idw_aqi(lat, lon)
     }
 
+class CleanRouteRequest(BaseModel):
+    start_lat: float
+    start_lon: float
+    end_lat: float
+    end_lon: float
+
 @app.post("/clean-route")
-def clean_route(data: dict):
-    start = (data["start_lat"], data["start_lon"])
-    end = (data["end_lat"], data["end_lon"])
-
-    route = a_star(start, end)
-
-    if not route or len(route) < 2:
-        # fallback → en azından düz çizgi
-        return {"route": [start, end]}
-
+def clean_route(req: CleanRouteRequest):
+    route = find_clean_route(
+        (req.start_lat, req.start_lon),
+        (req.end_lat, req.end_lon)
+    )
     return {"route": route}

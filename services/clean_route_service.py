@@ -1,22 +1,14 @@
-import heapq
+import requests
 from database import get_db
 from utils1 import haversine
 
-# -------------------------
-# İSTASYONLARI VERİTABANINDAN ÇEK
-# -------------------------
+# --------------------------------
+# AQI – IDW
+# --------------------------------
 def get_stations():
-    """
-    Tüm istasyonların:
-    (enlem, boylam, aqi_tahmin)
-    bilgilerini döndürür
-    """
     with get_db() as db:
         db.execute("""
-            SELECT 
-                i.enlem,
-                i.boylam,
-                s.tahmin
+            SELECT i.enlem, i.boylam, s.tahmin
             FROM istasyonlar i
             JOIN saatlik_tahmin_catboost s
               ON s.istasyon_id = i.id
@@ -24,109 +16,76 @@ def get_stations():
         """)
         return db.fetchall()
 
-
-# -------------------------
-# IDW (Inverse Distance Weighting) ile AQI
-# -------------------------
 def idw_aqi(lat, lon):
-    """
-    Verilen noktadaki AQI değerini
-    istasyonlara göre tahmin eder
-    """
     stations = get_stations()
-
-    numerator = 0.0
-    denominator = 0.0
+    num, den = 0.0, 0.0
 
     for s_lat, s_lon, aqi in stations:
-        distance_km = haversine(lat, lon, s_lat, s_lon) / 1000
-
-        # Çok yakın istasyon varsa direkt onu al
-        if distance_km < 0.5:
+        d = haversine(lat, lon, s_lat, s_lon) / 1000
+        if d < 0.5:
             return aqi
 
-        weight = 1 / (distance_km ** 2)
-        numerator += aqi * weight
-        denominator += weight
+        w = 1 / (d ** 2)
+        num += aqi * w
+        den += w
 
-    return numerator / denominator if denominator != 0 else 50
+    return num / den if den else 50
 
+# --------------------------------
+# OSRM ROUTE
+# --------------------------------
+def get_osrm_route(start, end):
+    url = (
+        f"https://router.project-osrm.org/route/v1/driving/"
+        f"{start[1]},{start[0]};{end[1]},{end[0]}"
+        f"?overview=full&geometries=geojson"
+    )
+    r = requests.get(url, timeout=10)
+    data = r.json()
+    coords = data["routes"][0]["geometry"]["coordinates"]
+    return [(lat, lon) for lon, lat in coords]
 
-# -------------------------
-# KOMŞU NOKTALARI ÜRET
-# -------------------------
-def get_neighbors(node, step=0.002):
-    """
-    Grid tabanlı komşuluk (8 yön)
-    """
-    lat, lon = node
-    neighbors = []
+# --------------------------------
+# ROUTE SAMPLING
+# --------------------------------
+def sample_route(route, step_m=80):
+    sampled = [route[0]]
+    acc = 0
 
-    for dlat in [-step, 0, step]:
-        for dlon in [-step, 0, step]:
-            if dlat != 0 or dlon != 0:
-                neighbors.append((lat + dlat, lon + dlon))
+    for i in range(1, len(route)):
+        d = haversine(
+            route[i-1][0], route[i-1][1],
+            route[i][0], route[i][1]
+        )
+        acc += d
+        if acc >= step_m:
+            sampled.append(route[i])
+            acc = 0
 
-    return neighbors
+    sampled.append(route[-1])
+    return sampled
 
+def corridor(point, offset=0.0005):
+    lat, lon = point
+    return [
+        (lat, lon),
+        (lat + offset, lon),
+        (lat - offset, lon),
+        (lat, lon + offset),
+        (lat, lon - offset),
+    ]
 
-# -------------------------
-# A* ALGORİTMASI (AQI AĞIRLIKLI)
-# -------------------------
-def a_star(start, goal):
-    """
-    En temiz rotayı döndürür
-    cost = mesafe × (1 + AQI / 100)
-    """
-    open_set = []
-    heapq.heappush(open_set, (0, start))
+# --------------------------------
+# CLEAN ROUTE
+# --------------------------------
+def find_clean_route(start, end):
+    base_route = get_osrm_route(start, end)
+    sampled = sample_route(base_route)
 
-    came_from = {}
-    g_score = {start: 0}
+    clean_route = []
+    for p in sampled:
+        options = corridor(p)
+        best = min(options, key=lambda x: idw_aqi(x[0], x[1]))
+        clean_route.append(best)
 
-    while open_set:
-        _, current = heapq.heappop(open_set)
-
-        # Hedefe yaklaştıysak bitir
-        if haversine(
-            current[0], current[1],
-            goal[0], goal[1]
-        ) < 200:
-            return reconstruct_path(came_from, current)
-
-        for neighbor in get_neighbors(current):
-            distance = haversine(
-                current[0], current[1],
-                neighbor[0], neighbor[1]
-            )
-
-            aqi = idw_aqi(neighbor[0], neighbor[1])
-            cost = distance * (1 + aqi / 100)
-
-            tentative_g = g_score[current] + cost
-
-            if neighbor not in g_score or tentative_g < g_score[neighbor]:
-                came_from[neighbor] = current
-                g_score[neighbor] = tentative_g
-
-                f_score = tentative_g + haversine(
-                    neighbor[0], neighbor[1],
-                    goal[0], goal[1]
-                )
-
-                heapq.heappush(open_set, (f_score, neighbor))
-
-    return []
-
-
-# -------------------------
-# ROTA GERİ OLUŞTURMA
-# -------------------------
-def reconstruct_path(came_from, current):
-    path = [current]
-
-    while current in came_from:
-        current = came_from[current]
-        path.append(current)
-
-    return path[::-1]
+    return clean_route
