@@ -119,8 +119,10 @@ def clean_route(data: dict):
     start = (data["start_lat"], data["start_lon"])
     end = (data["end_lat"], data["end_lon"])
 
-    if data["type"] == "shortest":
+    route = a_star(start, end)
+
+    if not route or len(route) < 2:
+        # fallback → en azından düz çizgi
         return {"route": [start, end]}
 
-    route = a_star(start, end)
     return {"route": route}
