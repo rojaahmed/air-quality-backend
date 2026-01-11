@@ -21,6 +21,8 @@ def idw_aqi(lat, lon):
     num, den = 0.0, 0.0
 
     for s_lat, s_lon, aqi in stations:
+        aqi = float(aqi)
+
         d = haversine(lat, lon, s_lat, s_lon) / 1000
         if d < 0.5:
             return aqi
