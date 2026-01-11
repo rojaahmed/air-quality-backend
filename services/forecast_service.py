@@ -14,30 +14,27 @@ STATION_MAP = {
 # -------------------------
 # 7 GÜNLÜK TAHMİN (GÜNLÜK)
 # -------------------------
-def get_7_hour_forecast(station_name: str = "Gaziantep"):
-    key = station_name.lower().replace(" ", "")
-    station = STATION_MAP.get(key)
-
-    if not station:
-        return None
-
+def get_7_day_forecast(station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
-            SELECT 
-                s.tarih_saat,
+            SELECT
+                g.tahmin_tarihi,
                 p.isim AS parametre,
-                s.tahmin,
-                s.kategori
-            FROM saatlik_tahmin_catboost s
-            JOIN istasyonlar i ON i.id = s.istasyon_id
-            JOIN parametreler p ON p.id = s.parametre_id
+                g.tahmin,
+                g.kategori,
+                g.mae,
+                g.mse,
+                g.r2
+            FROM gunluk_tahmin_catboost g
+            JOIN istasyonlar i ON i.id = g.istasyon_id
+            JOIN parametreler p ON p.id = g.parametre_id
             WHERE i.isim = %s
-              AND s.tarih_saat >= CURRENT_TIMESTAMP
-            ORDER BY s.tarih_saat
-        """, (station,))
+              AND g.tahmin_tarihi >= CURRENT_DATE
+            ORDER BY g.tahmin_tarihi, g.gun
+        """, (station_name,))
         rows = db.fetchall()
 
-    return _format_forecast(rows, "hourly", station)
+    return _format_forecast(rows, "daily", station_name)
 
 
 
