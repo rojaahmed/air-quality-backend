@@ -1,6 +1,9 @@
 import requests
 from database import get_db
 from utils1 import haversine
+import random
+from services.aqi_utils import aqi_category
+
 
 # --------------------------------
 # AQI – IDW
@@ -8,13 +11,18 @@ from utils1 import haversine
 def get_stations():
     with get_db() as db:
         db.execute("""
-            SELECT i.enlem, i.boylam, s.tahmin
+            SELECT 
+                i.isim,
+                i.enlem,
+                i.boylam,
+                s.tahmin
             FROM istasyonlar i
             JOIN saatlik_tahmin_catboost s
               ON s.istasyon_id = i.id
             WHERE s.tarih_saat >= CURRENT_TIMESTAMP
         """)
         return db.fetchall()
+
 
 def idw_aqi(lat, lon):
     stations = get_stations()
@@ -103,3 +111,43 @@ def find_clean_route(start, end):
         clean_route.append(curr)
 
     return clean_route
+
+def generate_points(lat, lon, count=20):
+    points = []
+    for _ in range(count):
+        points.append({
+            "lat": lat + random.uniform(-0.01, 0.01),
+            "lon": lon + random.uniform(-0.01, 0.01)
+        })
+    return points
+def get_address(lat, lon):
+    url = "https://nominatim.openstreetmap.org/reverse"
+    params = {
+        "format": "json",
+        "lat": lat,
+        "lon": lon,
+        "accept-language": "tr"
+    }
+    headers = {
+        "User-Agent": "gaziantep-air-quality-app"
+    }
+
+    r = requests.get(url, params=params, headers=headers)
+    return r.json().get("display_name", "Adres bulunamadı")
+
+def generate_address_points(station):
+    points = generate_points(station["lat"], station["lon"], 20)
+
+    result = []
+    for p in points:
+        result.append({
+            "address": f'{p["lat"]:.4f}, {p["lon"]:.4f}',
+            "lat": p["lat"],
+            "lon": p["lon"],
+            "station": station["name"],
+            "aqi": station["aqi"],
+            "category": aqi_category(station["aqi"])
+        })
+
+    return result
+
