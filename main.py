@@ -13,7 +13,6 @@ from datetime import date
 from services.location_service import find_nearest_station
 from fastapi.middleware.cors import CORSMiddleware
 from services.clean_route_service import idw_aqi
-from services.clean_route_service import a_star
 from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
 app = FastAPI()
