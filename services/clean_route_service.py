@@ -84,10 +84,22 @@ def find_clean_route(start, end):
     base_route = get_osrm_route(start, end)
     sampled = sample_route(base_route)
 
-    clean_route = []
-    for p in sampled:
-        options = corridor(p)
-        best = min(options, key=lambda x: idw_aqi(x[0], x[1]))
-        clean_route.append(best)
+    clean_route = [sampled[0]]
+    total_cost = 0
+
+    for i in range(1, len(sampled)):
+        prev = clean_route[-1]
+        curr = sampled[i]
+
+        dist = haversine(prev[0], prev[1], curr[0], curr[1])
+        aqi = idw_aqi(curr[0], curr[1])
+
+        cost = dist * (1 + (aqi / 50))
+
+        # 🔴 DEBUG BURAYA
+        print("AQI:", aqi, "DIST:", dist, "COST:", cost)
+
+        total_cost += cost
+        clean_route.append(curr)
 
     return clean_route
