@@ -192,3 +192,4 @@ def get_selected_day_next_7_hours(selected_date: date, station_name: str = DEFAU
         "type": "selected_day_next_7_hours",
         "hours": list(hourly.values())
     }
+
