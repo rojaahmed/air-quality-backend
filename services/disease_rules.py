@@ -2,133 +2,176 @@ DISEASE_RULES = {
 
     "Astım": {
         "PM10": {
-            "temiz": (0, 20),
-            "orta": (20, 50),
-            "kirli": (50, 999),
+            "good": (0, 20),
+            "medium": (20, 50),
+            "bad": (50, 999),
             "messages": {
-                "temiz": "Hava kalitesi astım hastaları için uygundur.",
-                "orta": "Astım hastaları için PM10 orta seviyede, dikkatli olun.",
-                "kirli": "Astım hastaları için PM10 yüksek, maske takmanız önerilir."
+                "good": "Hava kalitesi astım hastaları için uygundur.",
+                "medium": "Astım hastaları için PM10 orta seviyede, dikkatli olun.",
+                "bad": "Astım hastaları için PM10 yüksek, evde kalmanız veya maske takmanız önerilir."
             }
         },
         "SO2": {
-            "orta": (100, 350),
-            "kirli": (350, 999),
+            "medium": (100, 350),
+            "bad": (350, 999),
             "messages": {
-                "orta": "SO₂ solunum yollarını tahriş edebilir.",
-                "kirli": "SO₂ seviyesi astım krizini tetikleyebilir."
+                "medium": "SO₂ solunum yollarını tahriş edebilir.",
+                "bad": "SO₂ seviyesi astım krizini tetikleyebilir."
             }
         },
         "O3": {
-            "orta": (120, 180),
-            "kirli": (180, 999),
+            "medium": (120, 180),
+            "bad": (180, 999),
             "messages": {
-                "orta": "Ozon astımı olumsuz etkileyebilir.",
-                "kirli": "Ozon seviyesi tehlikelidir."
+                "medium": "Ozon astımı olumsuz etkileyebilir.",
+                "bad": "Ozon seviyesi tehlikeli, dışarı çıkmayınız."
             }
         }
     },
 
     "KOAH": {
         "PM10": {
-            "temiz": (0, 25),
-            "orta": (25, 50),
-            "kirli": (50, 999),
+            "good": (0, 25),
+            "medium": (25, 50),
+            "bad": (50, 999),
             "messages": {
-                "temiz": "KOAH hastaları için hava temiz.",
-                "orta": "PM10 orta düzeyde, dikkatli olun.",
-                "kirli": "KOAH hastaları için ciddi risk vardır."
+                "good": "KOAH hastaları için hava kalitesi iyi.",
+                "medium": "KOAH hastaları için PM10 orta düzeyde, uzun süre dışarıda kalmayın.",
+                "bad": "KOAH hastaları için ciddi risk, evde kalmanız önerilir."
+            }
+        },
+        "NO2": {
+            "medium": (100, 200),
+            "bad": (200, 999),
+            "messages": {
+                "medium": "NO₂ solunum fonksiyonlarını zorlayabilir.",
+                "bad": "NO₂ seviyesi KOAH hastaları için tehlikelidir."
             }
         }
     },
 
     "Alerjik Rinit": {
         "PM10": {
-            "temiz": (0, 30),
-            "orta": (30, 60),
-            "kirli": (60, 999),
+            "medium": (30, 60),
+            "bad": (60, 999),
             "messages": {
-                "temiz": "Alerjik rinit için hava uygundur.",
-                "orta": "Alerjik belirtiler artabilir.",
-                "kirli": "Alerjik rinit şikayetleri ciddi şekilde artabilir."
+                "good": "Alerjik rinit için hava koşulları uygundur.",
+                "medium": "Alerjik belirtiler artabilir.",
+                "bad": "Alerjik rinit şikayetleri ciddi şekilde artabilir."
             }
         }
     },
 
     "Kronik Bronşit": {
         "PM10": {
-            "temiz": (0, 25),
-            "orta": (25, 50),
-            "kirli": (50, 999),
+            "medium": (25, 50),
+            "bad": (50, 999),
             "messages": {
-                "temiz": "Solunum için uygun hava koşulları.",
-                "orta": "Öksürük ve nefes darlığı artabilir.",
-                "kirli": "Kronik bronşit hastaları için risklidir."
+                "good": "Solunum için uygun hava koşulları.",
+                "medium": "Öksürük ve nefes darlığı artabilir.",
+                "bad": "Kronik bronşit hastaları için risklidir."
             }
         }
     },
 
     "Akciğer Fibrozu": {
         "PM10": {
-            "temiz": (0, 20),
-            "orta": (20, 40),
-            "kirli": (40, 999),
+            "medium": (20, 40),
+            "bad": (40, 999),
             "messages": {
-                "temiz": "Akciğerler için uygun hava.",
-                "orta": "Solunum zorlaşabilir.",
-                "kirli": "Akciğer fibrozu için ciddi risk."
+                "good": "Akciğerler için uygun hava.",
+                "medium": "Solunum zorlaşabilir.",
+                "bad": "Akciğer fibrozu için ciddi risk."
             }
         }
     },
 
     "Kalp Hastalığı": {
         "PM10": {
-            "temiz": (0, 30),
-            "orta": (30, 60),
-            "kirli": (60, 999),
+            "medium": (30, 60),
+            "bad": (60, 999),
             "messages": {
-                "temiz": "Kalp hastaları için hava uygundur.",
-                "orta": "Fiziksel aktiviteleri azaltın.",
-                "kirli": "Kalp hastaları için ciddi risk."
+                "good": "Kalp hastaları için hava uygundur.",
+                "medium": "Fiziksel aktiviteleri azaltın.",
+                "bad": "Kalp hastaları için ciddi risk."
+            }
+        },
+        "CO": {
+            "medium": (5, 10),
+            "bad": (10, 999),
+            "messages": {
+                "medium": "Baş dönmesi yapabilir.",
+                "bad": "CO seviyesi kalp için tehlikelidir."
             }
         }
     },
 
     "Hipertansiyon": {
         "PM10": {
-            "temiz": (0, 40),
-            "orta": (40, 70),
-            "kirli": (70, 999),
+            "medium": (40, 70),
+            "bad": (70, 999),
             "messages": {
-                "temiz": "Tansiyon hastaları için uygun.",
-                "orta": "Tansiyon dalgalanmaları görülebilir.",
-                "kirli": "Hipertansiyon için riskli hava."
+                "good": "Tansiyon hastaları için uygun.",
+                "medium": "Tansiyon dalgalanmaları görülebilir.",
+                "bad": "Hipertansiyon için riskli hava."
             }
         }
     },
 
     "Diyabet": {
         "PM10": {
-            "temiz": (0, 50),
-            "orta": (50, 80),
-            "kirli": (80, 999),
+            "bad": (80, 999),
             "messages": {
-                "temiz": "Diyabet için risk yok.",
-                "orta": "Dikkatli olunması önerilir.",
-                "kirli": "Diyabet hastalarında enfeksiyon riski artabilir."
+                "good": "Diyabet için risk yok.",
+                "bad": "Diyabet hastalarında enfeksiyon riski artabilir."
+            }
+        }
+    },
+
+    "Bağışıklık Sistemi Zayıf": {
+        "PM10": {
+            "medium": (20, 40),
+            "bad": (40, 999),
+            "messages": {
+                "good": "Genel sağlık için uygun.",
+                "medium": "Bağışıklık sistemi zorlanabilir.",
+                "bad": "Enfeksiyon riski yüksektir."
+            }
+        }
+    },
+
+    "Gebelik": {
+        "PM10": {
+            "medium": (25, 50),
+            "bad": (50, 999),
+            "messages": {
+                "good": "Gebeler için hava uygundur.",
+                "medium": "Uzun süre dışarıda kalmayın.",
+                "bad": "Gebelikte risklidir, evde kalın."
+            }
+        }
+    },
+
+    "Sigara Kullanımı": {
+        "PM10": {
+            "medium": (20, 40),
+            "bad": (40, 999),
+            "messages": {
+                "good": "Hava kalitesi yeterlidir.",
+                "medium": "Solunum yolları zorlanabilir.",
+                "bad": "Sigara kullananlar için ciddi risk."
             }
         }
     },
 
     "65 Yaş Üstü": {
         "PM10": {
-            "temiz": (0, 30),
-            "orta": (30, 60),
-            "kirli": (60, 999),
+            "medium": (30, 60),
+            "bad": (60, 999),
             "messages": {
-                "temiz": "Yaşlı bireyler için hava uygundur.",
-                "orta": "Dış aktiviteler sınırlandırılmalı.",
-                "kirli": "Sağlık riski yüksektir."
+                "good": "Yaşlı bireyler için hava uygundur.",
+                "medium": "Dış aktiviteler sınırlandırılmalı.",
+                "bad": "Sağlık riski yüksektir."
             }
         }
     }

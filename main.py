@@ -18,7 +18,7 @@ from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
 from services.clean_route_service import generate_address_points
 from alerts import router as alerts_router
-from scheduler import start_scheduler
+
 
 app = FastAPI()
 app.include_router(alerts_router)
@@ -148,6 +148,3 @@ def gaziantep_addresses():
 
     return all_points
 
-@app.on_event("startup")
-def startup_event():
-    start_scheduler()
