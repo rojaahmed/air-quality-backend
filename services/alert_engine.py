@@ -1,5 +1,5 @@
 from collections import defaultdict
-from disease_rules import DISEASE_RULES
+from services.disease_rules import DISEASE_RULES
 
 
 def generate_daily_health_alerts(
