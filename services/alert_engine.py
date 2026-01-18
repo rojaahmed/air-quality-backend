@@ -1,47 +1,48 @@
-# services/alert_engine.py
+from collections import defaultdict
+from disease_rules import DISEASE_RULES
 
-from services.disease_rules import DISEASE_RULES
 
-def generate_health_alerts(
+def generate_daily_health_alerts(
     user_name: str,
     disease: str,
-    station_parameters: list,
     hourly_data: list
 ):
     alerts = []
 
-    if disease == "Yok" or disease not in DISEASE_RULES:
+    if disease not in DISEASE_RULES:
         return alerts
 
     rules = DISEASE_RULES[disease]
 
-    for hour_info in hourly_data:
-        hour = hour_info["hour"]
+    # parametre bazlı maksimum değerleri bul
+    max_values = defaultdict(float)
 
-        for param in station_parameters:
-            if param not in rules:
+    for hour in hourly_data:
+        for param, value in hour.items():
+            if param == "hour":
                 continue
+            if isinstance(value, (int, float)):
+                max_values[param] = max(max_values[param], value)
 
-            value = hour_info.get(param)
-            if value is None:
-                continue
+    for param, value in max_values.items():
+        if param not in rules:
+            continue
 
-            param_rules = rules[param]
+        rule = rules[param]
 
-            for level in ["bad", "medium", "good"]:
-                if level in param_rules:
-                    min_v, max_v = param_rules[level]
-                    if min_v <= value <= max_v:
-                        msg = param_rules["messages"].get(level)
-                        if msg:
-                            alerts.append({
-                                "hour": hour,
-                                "parameter": param,
-                                "severity": level,
-                                "value": value,
-                                "message": f"Sayın {user_name}, "
-                                           f"{hour} saatlerinde {param} değeri {value}. {msg}"
-                            })
-                        break
+        level = "good"
+
+        if "bad" in rule and rule["bad"][0] <= value <= rule["bad"][1]:
+            level = "bad"
+        elif "medium" in rule and rule["medium"][0] <= value <= rule["medium"][1]:
+            level = "medium"
+
+        message = rule["messages"].get(level)
+
+        if message:
+            alerts.append({
+                "severity": level,
+                "message": f"Sayın {user_name}, bugün genelinde {param} değeri {value}. {message}"
+            })
 
     return alerts

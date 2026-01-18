@@ -1,24 +1,19 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import List, Dict, Any
-from services.alert_engine import generate_health_alerts
+from services.alert_engine import generate_daily_health_alerts
 
 router = APIRouter()
 
 class HealthAlertRequest(BaseModel):
     user_name: str
     disease: str
-    station_parameters: List[str]
-    hourly_data: List[Dict[str, Any]]
+    hourly_data: list
+
 
 @router.post("/health-alerts")
-def get_health_alerts(req: HealthAlertRequest):
-    try:
-        return generate_health_alerts(
-            user_name=req.user_name,
-            disease=req.disease,
-            station_parameters=req.station_parameters,
-            hourly_data=req.hourly_data
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+def health_alerts(req: HealthAlertRequest):
+    return generate_daily_health_alerts(
+        req.user_name,
+        req.disease,
+        req.hourly_data
+    )
