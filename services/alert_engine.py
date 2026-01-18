@@ -1,6 +1,6 @@
+# backend/services/alert_engine.py
 from collections import defaultdict
 from services.disease_rules import DISEASE_RULES
-
 
 def generate_daily_health_alerts(
     user_name: str,
@@ -16,9 +16,7 @@ def generate_daily_health_alerts(
     max_values = defaultdict(float)
 
     for hour in hourly_data:
-        for param, value in hour.items():
-            if param == "hour":
-                continue
+        for param, value in hour["pollutants"].items():
             if station_parameters and param not in station_parameters:
                 continue
             if isinstance(value, (int, float)):
@@ -40,7 +38,7 @@ def generate_daily_health_alerts(
         if message:
             alerts.append({
                 "severity": level,
-                "message": f"Sayın {user_name}, bugün genelinde {param} değeri {value}. {message}"
+                "message": f"Sayın {user_name}, bugün {param} değeri {value}. {message}"
             })
 
     return alerts
