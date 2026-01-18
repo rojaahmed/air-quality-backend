@@ -17,7 +17,7 @@ from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
 from services.clean_route_service import generate_address_points
-from api.alerts import router as alerts_router
+from alerts import router as alerts_router
 
 app = FastAPI()
 app.include_router(alerts_router)
