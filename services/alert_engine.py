@@ -2,7 +2,11 @@ from services.disease_rules import DISEASE_RULES
 from classifier import classify_pollutant
 
 def generate_daily_health_alerts(user_name, disease, hourly_data, station_parameters):
+    if not station_parameters:
+        return []
+
     alerts = []
+    
 
     if disease not in DISEASE_RULES:
         return alerts
