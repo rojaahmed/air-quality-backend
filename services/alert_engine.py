@@ -1,57 +1,35 @@
-from collections import defaultdict
 from services.disease_rules import DISEASE_RULES
+from classifier import classify_pollutant
 
-def generate_daily_health_alerts(
-    user_name: str,
-    disease: str,
-    hourly_data: list,
-    station_parameters: list = None
-):
+def generate_daily_health_alerts(user_name, disease, hourly_data, station_parameters):
     alerts = []
 
-    # ❗ Hastalık yoksa bile boş dönme, "Diğer" kullan
-    rules = DISEASE_RULES.get(disease, DISEASE_RULES.get("Diğer"))
-    if not rules:
+    if disease not in DISEASE_RULES:
         return alerts
 
-    max_values = defaultdict(float)
+    disease_rules = DISEASE_RULES[disease]
 
-    # 🔹 Gün içindeki maksimum değerleri al
-    for hour in hourly_data:
-        for param, value in hour.get("pollutants", {}).items():
-            if station_parameters and param not in station_parameters:
-                continue
-            if isinstance(value, (int, float)):
-                max_values[param] = max(max_values[param], value)
+    for param in station_parameters:
+        values = []
 
-    # 🔹 Parametre bazlı uyarılar
-    for param, rule in rules.items():
-        value = max_values.get(param)
+        for hour in hourly_data:
+            if param in hour["pollutants"]:
+                values.append(hour["pollutants"][param])
 
-        # Parametre istasyonda yoksa atla
-        if value is None:
+        if not values or param not in disease_rules:
             continue
 
-        level = "good"
+        max_value = max(values)
+        rule = disease_rules[param]
 
-        if "bad" in rule and rule["bad"][0] <= value <= rule["bad"][1]:
-            level = "bad"
-        elif "medium" in rule and rule["medium"][0] <= value <= rule["medium"][1]:
-            level = "medium"
-
-        message = rule["messages"].get(level)
+        severity = classify_pollutant(max_value, rule)
+        message = rule["messages"].get(severity)
 
         if message:
             alerts.append({
-                "severity": level,
-                "message": f"Sayın {user_name}, bugün {param} değeri {value}. {message}"
+                "parameter": param,
+                "severity": severity,
+                "message": f"Sayın {user_name}, bugün {param} değeri {max_value}. {message}"
             })
-
-    # 🔥 EN KRİTİK GARANTİ
-    if not alerts:
-        alerts.append({
-            "severity": "good",
-            "message": f"Sayın {user_name}, bugün hava kalitesi {disease} hastaları için genel olarak uygundur."
-        })
 
     return alerts
