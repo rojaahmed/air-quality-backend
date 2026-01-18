@@ -16,11 +16,19 @@ def health_alerts(req: HealthAlertRequest):
 
     forecast = get_next_7_hours(req.station_name)
 
+    hours = forecast.get("hours", [])
+
+    station_parameters = (
+        list(hours[0]["pollutants"].keys())
+        if hours and "pollutants" in hours[0]
+        else None
+    )
+
+    disease = req.disease.strip()
+
     return generate_daily_health_alerts(
         user_name=req.user_name,
-        disease=req.disease,
-        hourly_data=forecast["hours"],
-        station_parameters=list(
-            forecast["hours"][0]["pollutants"].keys()
-        )
+        disease=disease,
+        hourly_data=hours,
+        station_parameters=station_parameters
     )
