@@ -21,9 +21,13 @@ def health_alerts(req: HealthAlertRequest):
     if not hours:
         return []
 
-    pollutants = hours[0].get("pollutants", {})
+    station_parameters = set()
 
-    station_parameters = list(pollutants.keys())
+    for hour in hours:
+     station_parameters.update(hour.get("pollutants", {}).keys())
+
+     station_parameters = list(station_parameters)
+
 
     return generate_daily_health_alerts(
         user_name=req.user_name,
