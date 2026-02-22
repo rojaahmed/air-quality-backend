@@ -1,7 +1,7 @@
 import psycopg2
 from contextlib import contextmanager
 
-DATABASE_URL = "postgresql://air_quality_db_ot1x_user:rFUy0TGz73uEbwZ1f2JQXgEltAKjrtva@dpg-d5c1moje5dus7383fqdg-a.virginia-postgres.render.com:5432/air_quality_db_ot1x"
+DATABASE_URL = "postgresql://postgres.lgfomuqhuyehqbrwmwoq:Rojda45670%2A%25@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
 
 @contextmanager
 def get_db():
@@ -9,9 +9,9 @@ def get_db():
     cursor = conn.cursor()
     try:
         yield cursor
-        conn.commit()  # commit işlemi yield sonrası
+        conn.commit()
     except Exception as e:
-        conn.rollback()  # hata olursa geri al
+        conn.rollback()
         raise e
     finally:
         cursor.close()
