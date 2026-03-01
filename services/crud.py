@@ -1,5 +1,5 @@
 from database import get_db
-from models import GunlukTahminCatboost
+
 
 def get_station_measurements(station_id: int):
     with get_db() as cur:

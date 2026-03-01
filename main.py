@@ -21,6 +21,7 @@ from alerts import router as alerts_router
 from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
 
+from database import get_db
 
 app = FastAPI()
 app.include_router(alerts_router)
@@ -163,3 +164,10 @@ def get_aqi_for_station(station_id: int):
         "category": aqi_result["category"],
         "pollutants": aqi_result["pollutants"]
     }
+
+@app.get("/tahminler")
+def get_tahminler():
+    with get_db() as db:
+        db.execute("SELECT * FROM gunluk_tahmin_catboost")
+        sonuc = db.fetchall()
+    return sonuc
