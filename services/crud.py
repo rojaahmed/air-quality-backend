@@ -1,39 +1,36 @@
-from database import SessionLocal
+from database import get_db
 from models import GunlukTahminCatboost
 
 def get_station_measurements(station_id: int):
-    db = SessionLocal()
+    with get_db() as cur:
 
-    # parametre_id -> hangi kirletici:
-    # 1 = PM10
-    # 2 = O3
-    # 3 = SO2
-    # 4 = CO
+        pollutant_map = {
+            1: "PM10",
+            2: "O3",
+            3: "SO2",
+            4: "CO",
+        }
 
-    pollutant_map = {
-        1: "PM10",
-        2: "O3",
-        3: "SO2",
-        4: "CO",
-    }
+        results = {
+            "PM10": None,
+            "O3": None,
+            "SO2": None,
+            "CO": None,
+        }
 
-    results = {
-        "PM10": None,
-        "O3": None,
-        "SO2": None,
-        "CO": None,
-    }
+        query = """
+            SELECT parametre_id, tahmin
+            FROM gunluk_tahmin_catboost
+            WHERE istasyon_id = %s AND gun = 1
+        """
 
-    rows = (
-        db.query(GunlukTahminCatboost)
-        .filter(GunlukTahminCatboost.istasyon_id == station_id)
-        .filter(GunlukTahminCatboost.gun == 1)  # “bugün” değeri
-        .all()
-    )
+        cur.execute(query, (station_id,))
+        rows = cur.fetchall()
 
-    for row in rows:
-        pol_name = pollutant_map.get(row.parametre_id)
-        if pol_name:
-            results[pol_name] = float(row.tahmin)
+        for row in rows:
+            param_id, value = row
+            pol_name = pollutant_map.get(param_id)
+            if pol_name:
+                results[pol_name] = float(value)
 
-    return results
+        return results
