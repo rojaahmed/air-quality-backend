@@ -18,6 +18,8 @@ from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
 from services.clean_route_service import generate_address_points
 from alerts import router as alerts_router
+from services.crud import get_station_measurements
+from services.aqi_services import compute_station_aqi
 
 
 app = FastAPI()
@@ -148,3 +150,16 @@ def gaziantep_addresses():
 
     return all_points
 
+
+@app.get("/aqi/{station_id}")
+def get_aqi_for_station(station_id: int):
+    data = get_station_measurements(station_id)
+
+    aqi_result = compute_station_aqi(data)
+
+    return {
+        "station_id": station_id,
+        "aqi": aqi_result["station_aqi"],
+        "category": aqi_result["category"],
+        "pollutants": aqi_result["pollutants"]
+    }
