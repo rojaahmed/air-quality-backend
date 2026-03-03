@@ -15,4 +15,4 @@ PyJWT
 psycopg2-binary
 requests
 SQLAlchemy
-osmnx
+

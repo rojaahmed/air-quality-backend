@@ -13,17 +13,15 @@ from datetime import date
 from services.location_service import find_nearest_station
 from fastapi.middleware.cors import CORSMiddleware
 from services.clean_route_service import idw_aqi
+from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
-
+from services.clean_route_service import generate_address_points
 from alerts import router as alerts_router
 from services.crud import get_station_measurements
-from services.aqi_services import compute_station_aqi
 
-from database import get_db
-from routing.graph_builder import load_graph
-from routing.astar_clean_route import astar_clean_route
-import osmnx as ox
+
+
 app = FastAPI()
 app.include_router(alerts_router)
 
@@ -131,7 +129,13 @@ class CleanRouteRequest(BaseModel):
     end_lat: float
     end_lon: float
 
-
+@app.post("/clean-route")
+def clean_route(req: CleanRouteRequest):
+    route = find_clean_route(
+        (req.start_lat, req.start_lon),
+        (req.end_lat, req.end_lon)
+    )
+    return {"route": route}
 
 @app.get("/aqi-map")
 def aqi_map():
@@ -159,33 +163,3 @@ def get_aqi_for_station(station_id: int):
         "category": aqi_result["category"],
         "pollutants": aqi_result["pollutants"]
     }
-
-@app.get("/tahminler")
-def get_tahminler():
-    with get_db() as db:
-        db.execute("SELECT * FROM gunluk_tahmin_catboost")
-        sonuc = db.fetchall()
-    return sonuc
-
-
-print("📌 Harita yükleniyor...")
-G = load_graph()
-
-@app.post("/clean-route")
-def clean_route(data: dict):
-    start = data["start"]   # {lat, lon}
-    end = data["end"]
-
-    start_node = ox.nearest_nodes(G, start["lon"], start["lat"])
-    end_node = ox.nearest_nodes(G, end["lon"], end["lat"])
-
-    route_nodes = astar_clean_route(G, start_node, end_node)
-
-    route_coords = [
-        {
-            "lat": G.nodes[n]["y"],
-            "lon": G.nodes[n]["x"]
-        } for n in route_nodes
-    ]
-
-    return {"route": route_coords}
