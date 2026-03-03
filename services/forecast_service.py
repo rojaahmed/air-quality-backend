@@ -45,15 +45,16 @@ def get_7_hour_forecast(station_name: str = DEFAULT_STATION):
     with get_db() as db:
         db.execute("""
             SELECT 
-                s.tarih_saat,  -- 0
-                p.isim,        -- 1
-                s.tahmin,      -- 2
-                s.kategori     -- 3
+                s.tarih_saat,
+                p.isim,
+                s.tahmin,
+                s.kategori
             FROM saatlik_tahmin_catboost s
             JOIN istasyonlar i ON i.id = s.istasyon_id
             JOIN parametreler p ON p.id = s.parametre_id
             WHERE i.isim = %s
-              AND s.tarih_saat >= CURRENT_TIMESTAMP
+              AND s.tarih_saat BETWEEN CURRENT_TIMESTAMP 
+                                   AND CURRENT_TIMESTAMP + INTERVAL '7 hour'
             ORDER BY s.tarih_saat
         """, (station_name,))
         rows = db.fetchall()
