@@ -10,6 +10,7 @@ def get_stations():
         """)
         return db.fetchall()
 
+
 def idw_aqi(lat, lon):
     stations = get_stations()
     num = 0
@@ -18,11 +19,13 @@ def idw_aqi(lat, lon):
     for s_lat, s_lon, aqi in stations:
         d = haversine(lat, lon, s_lat, s_lon)
 
-        if d < 0.5:
+        # 500 metre yakınsa direkt o istasyonun AQI değerini döndür
+        if d < 0.5:  # kilometre cinsinden (haversine km döndürür)
             return aqi
 
+        # Ağırlık: 1 / d²
         w = 1 / (d ** 2)
         num += aqi * w
         den += w
 
-    return num / den if den else 50
+    return num / den if den else 50  # Hiç istasyon yoksa default 50
