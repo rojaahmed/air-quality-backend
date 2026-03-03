@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from services.clean_route_service import idw_aqi
 from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
-from services.clean_route_service import generate_address_points
+
 from alerts import router as alerts_router
 from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
