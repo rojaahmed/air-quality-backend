@@ -19,7 +19,7 @@ from services.aqi_map_service import get_aqi_map_points
 from services.clean_route_service import generate_address_points
 from alerts import router as alerts_router
 from services.crud import get_station_measurements
-
+from services.aqi_service import compute_station_aqi
 
 
 app = FastAPI()
