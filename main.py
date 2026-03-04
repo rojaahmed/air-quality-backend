@@ -128,7 +128,7 @@ class CleanRouteRequest(BaseModel):
     end_lat: float
     end_lon: float
 
-@app.post("/clean-route")
+@app.get("/clean-route")
 def clean_route(req: CleanRouteRequest):
     route = find_clean_route(
         (req.start_lat, req.start_lon),
