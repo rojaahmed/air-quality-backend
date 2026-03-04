@@ -100,13 +100,16 @@ def find_clean_route(start, end):
     g = {start: 0}
     visited = set()
 
+    goal = None  # 🔥 önce tanımlıyoruz
+
     while open_set:
         _, current = heapq.heappop(open_set)
         if current in visited:
             continue
         visited.add(current)
 
-        if heuristic(current, end) < 30:
+        # 🔥 hedefe yeterince yaklaştı mı?
+        if heuristic(current, end) < 80:
             goal = current
             break
 
@@ -119,7 +122,15 @@ def find_clean_route(start, end):
                 heapq.heappush(open_set, (f, nb))
                 came[nb] = current
 
-    # path çıkar
+    # ----------------------------------
+    # 🔥 hedef hiç bulunmadı → rota yok
+    # ----------------------------------
+    if goal is None:
+        return []
+
+    # ----------------------------------
+    # 🔥 rota çıkar
+    # ----------------------------------
     path = [goal]
     while path[-1] != start:
         path.append(came[path[-1]])
