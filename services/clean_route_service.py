@@ -1,21 +1,17 @@
+import heapq
 import requests
-from database import get_db
 from utils1 import haversine
-import random
+from database import get_db
 from services.aqi_utils import aqi_category
+import datetime
 
+GRID_SIZE = 0.00025   # yaklaşık 25–28 metre
 
-# --------------------------------
-# AQI – IDW
-# --------------------------------
+# ----------------------------- AQI – IDW -----------------------------
 def get_stations():
     with get_db() as db:
         db.execute("""
-            SELECT 
-                i.isim,
-                i.enlem,
-                i.boylam,
-                s.tahmin
+            SELECT i.enlem, i.boylam, s.tahmin
             FROM istasyonlar i
             JOIN saatlik_tahmin_catboost s
               ON s.istasyon_id = i.id
@@ -23,131 +19,108 @@ def get_stations():
         """)
         return db.fetchall()
 
-
 def idw_aqi(lat, lon):
     stations = get_stations()
-    num, den = 0.0, 0.0
+    num, den = 0, 0
 
     for s_lat, s_lon, aqi in stations:
-        aqi = float(aqi)
+        dist = haversine(lat, lon, s_lat, s_lon) / 1000
+        if dist < 0.2:
+            return float(aqi)
 
-        d = haversine(lat, lon, s_lat, s_lon) / 1000
-        if d < 0.5:
-            return aqi
-
-        w = 1 / (d ** 2)
-        num += aqi * w
+        w = 1 / (dist ** 2)
+        num += float(aqi) * w
         den += w
 
     return num / den if den else 50
 
-# --------------------------------
-# OSRM ROUTE
-# --------------------------------
-def get_osrm_route(start, end):
-    url = (
-        f"https://router.project-osrm.org/route/v1/driving/"
-        f"{start[1]},{start[0]};{end[1]},{end[0]}"
-        f"?overview=full&geometries=geojson"
-    )
-    r = requests.get(url, timeout=10)
-    data = r.json()
-    coords = data["routes"][0]["geometry"]["coordinates"]
-    return [(lat, lon) for lon, lat in coords]
 
-# --------------------------------
-# ROUTE SAMPLING
-# --------------------------------
-def sample_route(route, step_m=80):
-    sampled = [route[0]]
-    acc = 0
+# --------------------- Trafik & Sanayi ---------------------
+def traffic_multiplier():
+    wd = datetime.datetime.now().weekday()  # 6 = pazar
+    hour = datetime.datetime.now().hour
 
-    for i in range(1, len(route)):
-        d = haversine(
-            route[i-1][0], route[i-1][1],
-            route[i][0], route[i][1]
-        )
-        acc += d
-        if acc >= step_m:
-            sampled.append(route[i])
-            acc = 0
+    mult = 1.0
+    if wd == 5:
+        mult *= 1.4
+    if wd == 6:
+        mult *= 1.6
 
-    sampled.append(route[-1])
-    return sampled
+    if 7 <= hour <= 10:
+        mult *= 1.3
+    if 17 <= hour <= 20:
+        mult *= 1.35
 
-def corridor(point, offset=0.0005):
-    lat, lon = point
-    return [
-        (lat, lon),
-        (lat + offset, lon),
-        (lat - offset, lon),
-        (lat, lon + offset),
-        (lat, lon - offset),
-    ]
+    return mult
 
-# --------------------------------
-# CLEAN ROUTE
-# --------------------------------
+INDUSTRIAL_ZONES = [
+    (37.0475, 37.3380),
+    (37.0560, 37.3500),
+]
+
+def industry_penalty(lat, lon):
+    for iz_lat, iz_lon in INDUSTRIAL_ZONES:
+        d = haversine(lat, lon, iz_lat, iz_lon)
+        if d < 800:
+            return 1.35
+    return 1.0
+
+
+# --------------------- A* COST ---------------------
+def node_cost(a, b):
+    dist = haversine(a[0], a[1], b[0], b[1])
+    aqi = idw_aqi(b[0], b[1])
+    traf = traffic_multiplier()
+    ind = industry_penalty(b[0], b[1])
+
+    return dist * (1 + aqi / 60) * traf * ind
+
+
+def heuristic(a, b):
+    return haversine(a[0], a[1], b[0], b[1])
+
+
+# ---------------------- A* GRID ROTA ----------------------
 def find_clean_route(start, end):
-    base_route = get_osrm_route(start, end)
-    sampled = sample_route(base_route)
 
-    clean_route = [sampled[0]]
-    total_cost = 0
+    def neighbors(p):
+        lat, lon = p
+        d = GRID_SIZE
+        return [
+            (lat + d, lon),
+            (lat - d, lon),
+            (lat, lon + d),
+            (lat, lon - d),
+        ]
 
-    for i in range(1, len(sampled)):
-        prev = clean_route[-1]
-        curr = sampled[i]
+    open_set = []
+    heapq.heappush(open_set, (0, start))
 
-        dist = haversine(prev[0], prev[1], curr[0], curr[1])
-        aqi = idw_aqi(curr[0], curr[1])
+    came = {}
+    g = {start: 0}
+    visited = set()
 
-        cost = dist * (1 + (aqi / 50))
+    while open_set:
+        _, current = heapq.heappop(open_set)
+        if current in visited:
+            continue
+        visited.add(current)
 
-        # 🔴 DEBUG BURAYA
-        print("AQI:", aqi, "DIST:", dist, "COST:", cost)
+        if heuristic(current, end) < 30:
+            goal = current
+            break
 
-        total_cost += cost
-        clean_route.append(curr)
+        for nb in neighbors(current):
+            tentative_g = g[current] + node_cost(current, nb)
 
-    return clean_route
+            if nb not in g or tentative_g < g[nb]:
+                g[nb] = tentative_g
+                f = tentative_g + heuristic(nb, end)
+                heapq.heappush(open_set, (f, nb))
+                came[nb] = current
 
-def generate_points(lat, lon, count=20):
-    points = []
-    for _ in range(count):
-        points.append({
-            "lat": lat + random.uniform(-0.01, 0.01),
-            "lon": lon + random.uniform(-0.01, 0.01)
-        })
-    return points
-def get_address(lat, lon):
-    url = "https://nominatim.openstreetmap.org/reverse"
-    params = {
-        "format": "json",
-        "lat": lat,
-        "lon": lon,
-        "accept-language": "tr"
-    }
-    headers = {
-        "User-Agent": "gaziantep-air-quality-app"
-    }
-
-    r = requests.get(url, params=params, headers=headers)
-    return r.json().get("display_name", "Adres bulunamadı")
-
-def generate_address_points(station):
-    points = generate_points(station["lat"], station["lon"], 20)
-
-    result = []
-    for p in points:
-        result.append({
-            "address": f'{p["lat"]:.4f}, {p["lon"]:.4f}',
-            "lat": p["lat"],
-            "lon": p["lon"],
-            "station": station["name"],
-            "aqi": station["aqi"],
-            "category": aqi_category(station["aqi"])
-        })
-
-    return result
-
+    # path çıkar
+    path = [goal]
+    while path[-1] != start:
+        path.append(came[path[-1]])
+    return path[::-1]

@@ -16,7 +16,6 @@ from services.clean_route_service import idw_aqi
 from services.clean_route_service import find_clean_route
 from pydantic import BaseModel
 from services.aqi_map_service import get_aqi_map_points
-from services.clean_route_service import generate_address_points
 from alerts import router as alerts_router
 from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
@@ -141,14 +140,7 @@ def clean_route(req: CleanRouteRequest):
 def aqi_map():
     return get_aqi_map_points()
 
-@app.get("/gaziantep/addresses")
-def gaziantep_addresses():
-    all_points = []
 
-    for station in stations:
-        all_points.extend(generate_address_points(station))
-
-    return all_points
 
 
 @app.get("/aqi/{station_id}")
