@@ -4,8 +4,17 @@ from utils1 import haversine
 from database import get_db
 from services.aqi_utils import aqi_category
 import datetime
+import osmnx as ox
+import networkx as nx
+
 
 GRID_SIZE = 0.00025   # yaklaşık 25–28 metre
+
+G = ox.load_graphml("gaziantep_roads.graphml")
+
+def node_to_coord(node):
+    return (G.nodes[node]["y"], G.nodes[node]["x"])
+
 
 # ----------------------------- AQI – IDW -----------------------------
 def get_stations():
@@ -19,12 +28,17 @@ def get_stations():
         """)
         return db.fetchall()
 
+
+# ⚡ sadece bir kere çekiyoruz (performans için)
+STATIONS = get_stations()
+
+
 def idw_aqi(lat, lon):
-    stations = get_stations()
     num, den = 0, 0
 
-    for s_lat, s_lon, aqi in stations:
+    for s_lat, s_lon, aqi in STATIONS:
         dist = haversine(lat, lon, s_lat, s_lon) / 1000
+
         if dist < 0.2:
             return float(aqi)
 
@@ -37,10 +51,11 @@ def idw_aqi(lat, lon):
 
 # --------------------- Trafik & Sanayi ---------------------
 def traffic_multiplier():
-    wd = datetime.datetime.now().weekday()  # 6 = pazar
+    wd = datetime.datetime.now().weekday()
     hour = datetime.datetime.now().hour
 
     mult = 1.0
+
     if wd == 5:
         mult *= 1.4
     if wd == 6:
@@ -53,16 +68,20 @@ def traffic_multiplier():
 
     return mult
 
+
 INDUSTRIAL_ZONES = [
     (37.0475, 37.3380),
     (37.0560, 37.3500),
 ]
 
+
 def industry_penalty(lat, lon):
     for iz_lat, iz_lon in INDUSTRIAL_ZONES:
         d = haversine(lat, lon, iz_lat, iz_lon)
+
         if d < 800:
             return 1.35
+
     return 1.0
 
 
@@ -80,58 +99,36 @@ def heuristic(a, b):
     return haversine(a[0], a[1], b[0], b[1])
 
 
-# ---------------------- A* GRID ROTA ----------------------
+# ---------------------- A* ROAD ROTA ----------------------
 def find_clean_route(start, end):
 
-    def neighbors(p):
-        lat, lon = p
-        d = GRID_SIZE
-        return [
-            (lat + d, lon),
-            (lat - d, lon),
-            (lat, lon + d),
-            (lat, lon - d),
-        ]
+    # en yakın yol node'larını bul
+    start_node = ox.distance.nearest_nodes(G, start[1], start[0])
+    end_node = ox.distance.nearest_nodes(G, end[1], end[0])
 
-    open_set = []
-    heapq.heappush(open_set, (0, start))
+    def cost(u, v, d):
 
-    came = {}
-    g = {start: 0}
-    visited = set()
+        a = node_to_coord(u)
+        b = node_to_coord(v)
 
-    goal = None  # 🔥 önce tanımlıyoruz
+        # varsa gerçek yol uzunluğu kullan
+        dist = d.get("length", haversine(a[0], a[1], b[0], b[1]))
 
-    while open_set:
-        _, current = heapq.heappop(open_set)
-        if current in visited:
-            continue
-        visited.add(current)
+        aqi = idw_aqi(b[0], b[1])
+        traf = traffic_multiplier()
+        ind = industry_penalty(b[0], b[1])
 
-        # 🔥 hedefe yeterince yaklaştı mı?
-        if heuristic(current, end) < 80:
-            goal = current
-            break
+        return dist * (1 + aqi / 60) * traf * ind
 
-        for nb in neighbors(current):
-            tentative_g = g[current] + node_cost(current, nb)
+    route = nx.astar_path(
+        G,
+        start_node,
+        end_node,
+        heuristic=lambda u, v: heuristic(node_to_coord(u), node_to_coord(v)),
+        weight=cost
+    )
 
-            if nb not in g or tentative_g < g[nb]:
-                g[nb] = tentative_g
-                f = tentative_g + heuristic(nb, end)
-                heapq.heappush(open_set, (f, nb))
-                came[nb] = current
+    # node → koordinat
+    path = [node_to_coord(n) for n in route]
 
-    # ----------------------------------
-    # 🔥 hedef hiç bulunmadı → rota yok
-    # ----------------------------------
-    if goal is None:
-        return []
-
-    # ----------------------------------
-    # 🔥 rota çıkar
-    # ----------------------------------
-    path = [goal]
-    while path[-1] != start:
-        path.append(came[path[-1]])
-    return path[::-1]
+    return path
