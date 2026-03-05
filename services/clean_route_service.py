@@ -6,11 +6,13 @@ from services.aqi_utils import aqi_category
 import datetime
 import osmnx as ox
 import networkx as nx
+import pickle
 
 
 GRID_SIZE = 0.00025   # yaklaşık 25–28 metre
 
-G = ox.load_graphml("gaziantep_roads.graphml")
+with open("roads.pkl","rb") as f:
+    G = pickle.load(f)
 
 def node_to_coord(node):
     return (G.nodes[node]["y"], G.nodes[node]["x"])
@@ -85,7 +87,7 @@ def industry_penalty(lat, lon):
     return 1.0
 
 
-# --------------------- A* COST ---------------------
+# --------------------- A* COST --------------------- 
 def node_cost(a, b):
     dist = haversine(a[0], a[1], b[0], b[1])
     aqi = idw_aqi(b[0], b[1])
