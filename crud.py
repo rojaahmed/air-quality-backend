@@ -88,3 +88,50 @@ def reset_password(email: str, new_password: str):
             (hashed, email)
         )
     return True
+
+# --------------------------
+# Acil İletişim Ekle
+# --------------------------
+def add_emergency_contact(user_id: int, data: dict):
+
+    with get_db() as db:
+
+        db.execute("""
+            INSERT INTO acil_iletisimler
+            (kullanici_id, ad_soyad, telefon, yakinlik)
+            VALUES (%s,%s,%s,%s)
+        """,(
+            user_id,
+            data["name"],
+            data["phone"],
+            data["relation"]
+        ))
+
+    return True
+
+    # --------------------------
+# Kullanıcının Acil Kişileri
+# --------------------------
+def get_emergency_contacts(user_id:int):
+
+    with get_db() as db:
+
+        db.execute("""
+            SELECT id, ad_soyad, telefon, yakinlik
+            FROM acil_iletisimler
+            WHERE kullanici_id = %s
+        """,(user_id,))
+
+        rows = db.fetchall()
+
+    contacts = []
+
+    for r in rows:
+        contacts.append({
+            "id": r[0],
+            "name": r[1],
+            "phone": r[2],
+            "relation": r[3]
+        })
+
+    return contacts
