@@ -7,12 +7,14 @@ import datetime
 import osmnx as ox
 import networkx as nx
 import pickle
+from functools import lru_cache
 
 
 GRID_SIZE = 0.00025   # yaklaşık 25–28 metre
 
 with open("roads.pkl","rb") as f:
     G = pickle.load(f)
+
 
 def node_to_coord(node):
     return (G.nodes[node]["y"], G.nodes[node]["x"])
@@ -31,20 +33,25 @@ def get_stations():
         return db.fetchall()
 
 
-# ⚡ sadece bir kere çekiyoruz (performans için)
+# ⚡ sadece bir kere çekiyoruz
 STATIONS = get_stations()
 
 
+# ⚡ CACHE EKLEDİK (çok hızlandırır)
+@lru_cache(maxsize=50000)
 def idw_aqi(lat, lon):
+
     num, den = 0, 0
 
     for s_lat, s_lon, aqi in STATIONS:
+
         dist = haversine(lat, lon, s_lat, s_lon) / 1000
 
         if dist < 0.2:
             return float(aqi)
 
         w = 1 / (dist ** 2)
+
         num += float(aqi) * w
         den += w
 
@@ -53,6 +60,7 @@ def idw_aqi(lat, lon):
 
 # --------------------- Trafik & Sanayi ---------------------
 def traffic_multiplier():
+
     wd = datetime.datetime.now().weekday()
     hour = datetime.datetime.now().hour
 
@@ -60,11 +68,13 @@ def traffic_multiplier():
 
     if wd == 5:
         mult *= 1.4
+
     if wd == 6:
         mult *= 1.6
 
     if 7 <= hour <= 10:
         mult *= 1.3
+
     if 17 <= hour <= 20:
         mult *= 1.35
 
@@ -78,7 +88,9 @@ INDUSTRIAL_ZONES = [
 
 
 def industry_penalty(lat, lon):
+
     for iz_lat, iz_lon in INDUSTRIAL_ZONES:
+
         d = haversine(lat, lon, iz_lat, iz_lon)
 
         if d < 800:
@@ -87,24 +99,19 @@ def industry_penalty(lat, lon):
     return 1.0
 
 
-# --------------------- A* COST --------------------- 
-def node_cost(a, b):
-    dist = haversine(a[0], a[1], b[0], b[1])
-    aqi = idw_aqi(b[0], b[1])
-    traf = traffic_multiplier()
-    ind = industry_penalty(b[0], b[1])
-
-    return dist * (1 + aqi / 60) * traf * ind
-
-
+# --------------------- HEURISTIC ---------------------
 def heuristic(a, b):
+
     return haversine(a[0], a[1], b[0], b[1])
 
 
 # ---------------------- A* ROAD ROTA ----------------------
 def find_clean_route(start, end):
 
-    # en yakın yol node'larını bul
+    # ⚡ TRAFİK BİR KERE HESAPLANIYOR
+    traf = traffic_multiplier()
+
+    # en yakın yol node'ları
     start_node = ox.distance.nearest_nodes(G, start[1], start[0])
     end_node = ox.distance.nearest_nodes(G, end[1], end[0])
 
@@ -113,14 +120,18 @@ def find_clean_route(start, end):
         a = node_to_coord(u)
         b = node_to_coord(v)
 
-        # varsa gerçek yol uzunluğu kullan
+        # gerçek yol uzunluğu
         dist = d.get("length", haversine(a[0], a[1], b[0], b[1]))
 
-        aqi = idw_aqi(b[0], b[1])
-        traf = traffic_multiplier()
-        ind = industry_penalty(b[0], b[1])
+        # ⚡ cache daha iyi çalışsın diye yuvarlama
+        lat = round(b[0], 4)
+        lon = round(b[1], 4)
+
+        aqi = idw_aqi(lat, lon)
+        ind = industry_penalty(lat, lon)
 
         return dist * (1 + aqi / 60) * traf * ind
+
 
     route = nx.astar_path(
         G,
