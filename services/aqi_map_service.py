@@ -2,7 +2,6 @@ from database import get_db
 from collections import defaultdict
 
 
-
 def get_aqi_map_points():
     with get_db() as db:
         db.execute("""
@@ -13,23 +12,28 @@ def get_aqi_map_points():
                 s.tahmin
             FROM istasyonlar i
             JOIN saatlik_tahmin_catboost s
-              ON s.istasyon_id = i.id
+                ON s.istasyon_id = i.id
             WHERE s.tarih_saat >= CURRENT_TIMESTAMP
+            ORDER BY s.tarih_saat
         """)
         rows = db.fetchall()
 
-    result = []
+    points = []
+
     for r in rows:
-        result.append({
+        points.append({
             "name": r[0],
-            "lat": r[1],
-            "lon": r[2],
+            "lat": float(r[1]),
+            "lon": float(r[2]),
             "aqi": float(r[3])
         })
 
-    return normalize_points(result)
+    return normalize_points(points)
 
 
+# -------------------------------------
+# AQI KATEGORİ
+# -------------------------------------
 
 def aqi_category(aqi):
     if aqi <= 50:
@@ -40,6 +44,11 @@ def aqi_category(aqi):
         return "Kirli"
 
 
+# -------------------------------------
+# İSTASYON BAŞINA TEK AQI HESABI
+# (MAX kullanıyoruz)
+# -------------------------------------
+
 def normalize_points(points):
     grouped = defaultdict(list)
 
@@ -48,15 +57,18 @@ def normalize_points(points):
         grouped[key].append(p["aqi"])
 
     result = []
+
     for (name, lat, lon), aqis in grouped.items():
-        avg_aqi = sum(aqis) / len(aqis)
+
+        # AQI = en yüksek kirletici
+        station_aqi = max(aqis)
 
         result.append({
             "name": name,
             "lat": lat,
             "lon": lon,
-            "aqi": round(avg_aqi, 1),
-            "category": aqi_category(avg_aqi)
+            "aqi": round(station_aqi, 1),
+            "category": aqi_category(station_aqi)
         })
 
     return result
