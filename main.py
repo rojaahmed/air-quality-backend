@@ -143,8 +143,8 @@ def clean_route(
     return {"route": route}
 
 @app.get("/aqi-map")
-def aqi_map(lat: float, lon: float):
-    return generate_nearby_points(lat, lon)
+def aqi_map():
+    return get_aqi_map_points()
 
 
 
