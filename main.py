@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from backend.database import get_db
+from database import get_db
 from models import KullaniciCreate, LoginRequest
 from crud import create_user
 from user_service import login_user
