@@ -1,4 +1,4 @@
-from backend.risk_engine import disease_sensitive, is_risky
+from risk_engine import disease_sensitive, is_risky
 
 
 def check_user_risk(user, prediction):
