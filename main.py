@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from backend.database import get_db
 from models import KullaniciCreate, LoginRequest
 from crud import create_user
 from user_service import login_user
@@ -20,7 +21,7 @@ from alerts import router as alerts_router
 from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
 from services import emergency_service
-
+import scheduler
 
 app = FastAPI()
 app.include_router(alerts_router)
@@ -161,3 +162,40 @@ def get_aqi_for_station(station_id: int):
         "category": aqi_result["category"],
         "pollutants": aqi_result["pollutants"]
     }
+
+class UpdateDeviceRequest(BaseModel):
+    user_id: int
+    firebase_token: str
+    latitude: float
+    longitude: float
+
+
+@app.post("/update-device")
+def update_device(data: UpdateDeviceRequest):
+
+    with get_db() as db:
+
+        db.execute("""
+            SELECT id FROM kullanicilar
+            WHERE id=%s
+        """,(data.user_id,))
+
+        user = db.fetchone()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+        db.execute("""
+            UPDATE kullanicilar
+            SET firebase_token=%s,
+                latitude=%s,
+                longitude=%s
+            WHERE id=%s
+        """,(
+            data.firebase_token,
+            data.latitude,
+            data.longitude,
+            data.user_id
+        ))
+
+    return {"status": "ok"}

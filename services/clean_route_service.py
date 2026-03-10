@@ -35,7 +35,9 @@ def get_stations():
 
 # ⚡ sadece bir kere çekiyoruz
 STATIONS = get_stations()
-
+print("STATIONS COUNT:", len(STATIONS))
+print("GRAPH NODES:", len(G.nodes))
+print("GRAPH EDGES:", len(G.edges))
 
 # ⚡ CACHE EKLEDİK (çok hızlandırır)
 @lru_cache(maxsize=50000)
