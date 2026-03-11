@@ -2,7 +2,7 @@ from risk_engine import disease_sensitive, is_risky
 from database import get_db
 from services.forecast_service import get_7_hour_forecast
 from services.location_service import find_nearest_station
-from notification_service import send_notification
+from services.notification_service import send_notification
 
 
 def run_notification_job():
