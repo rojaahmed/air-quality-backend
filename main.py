@@ -21,9 +21,13 @@ from alerts import router as alerts_router
 from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
 from services import emergency_service
-import scheduler
+from scheduler import start_scheduler
+
 
 app = FastAPI()
+@app.on_event("startup")
+def start_jobs():
+    start_scheduler()
 app.include_router(alerts_router)
 app.include_router(emergency_service.router)
 app.add_middleware(
