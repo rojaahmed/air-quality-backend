@@ -22,7 +22,7 @@ from services.crud import get_station_measurements
 from services.aqi_services import compute_station_aqi
 from services import emergency_service
 from scheduler import start_scheduler
-
+from services.notification_worker import run_notification_job
 
 app = FastAPI()
 @app.on_event("startup")
@@ -203,3 +203,9 @@ def update_device(data: UpdateDeviceRequest):
         ))
 
     return {"status": "ok"}
+
+
+@app.get("/test-notification")
+def test_notification():
+    run_notification_job()
+    return {"status": "notification job executed"}
