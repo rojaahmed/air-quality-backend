@@ -3,6 +3,7 @@ from services.location_service import find_nearest_station
 from services.notification_service import send_notification
 from services.forecast_service import get_next_7_hours
 from health_engine import check_user_risk
+from services.aqi_utils import compute_pollutant_aqi, aqi_category
 
 
 def run_notification_job():
@@ -41,10 +42,17 @@ def run_notification_job():
 
             for pollutant, value in p["pollutants"].items():
 
+                aqi = compute_pollutant_aqi(pollutant, value)
+
+                if aqi is None:
+                    continue
+
+                category = aqi_category(aqi)
+
                 prediction = {
                     "hour": hour,
                     "pollutant": pollutant,
-                    "category": "orta"   # test için
+                    "category": category
                 }
 
                 message = check_user_risk(user_data, prediction)
@@ -61,3 +69,4 @@ def run_notification_job():
 
             if message:
                 break
+            print(hour, pollutant, value, category)
