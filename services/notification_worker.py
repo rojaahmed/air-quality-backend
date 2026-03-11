@@ -4,6 +4,7 @@ from services.notification_service import send_notification
 from services.forecast_service import get_next_7_hours
 from health_engine import check_user_risk
 from services.aqi_utils import compute_pollutant_aqi, aqi_category
+from datetime import datetime
 
 
 def run_notification_job():
@@ -36,9 +37,17 @@ def run_notification_job():
         data = get_next_7_hours(station["name"])
         predictions = data["hours"]
 
+        current_hour = datetime.now().hour
+
         for p in predictions:
 
-            hour = p["hour"]
+            hour = int(p["hour"].split(":")[0])
+
+            # geçmiş saatleri atla
+            if hour <= current_hour:
+                continue
+
+            message = None
 
             for pollutant, value in p["pollutants"].items():
 
@@ -48,6 +57,8 @@ def run_notification_job():
                     continue
 
                 category = aqi_category(aqi)
+
+                print(hour, pollutant, value, category)
 
                 prediction = {
                     "hour": hour,
@@ -69,4 +80,3 @@ def run_notification_job():
 
             if message:
                 break
-            print(hour, pollutant, value, category)

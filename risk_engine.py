@@ -5,7 +5,7 @@ def is_risky(category):
 
     risky_levels = ["orta", "kirli", "çok kirli"]
 
-    return category in risky_levels
+    return category.lower() in risky_levels
 
 
 def disease_sensitive(disease, pollutant):

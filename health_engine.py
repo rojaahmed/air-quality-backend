@@ -6,9 +6,11 @@ def check_user_risk(user, prediction):
     disease = user["kronik_hastalik"]
     pollutant = prediction["pollutant"]
 
-    category = prediction["category"]
-
+    category = prediction["category"].lower()
     hour = prediction["hour"]
+
+    if not disease:
+        return None
 
     if not disease_sensitive(disease, pollutant):
         return None
