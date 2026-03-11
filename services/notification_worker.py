@@ -37,19 +37,27 @@ def run_notification_job():
         data = get_next_7_hours(station["name"])
         predictions = data["hours"]
 
-        current_hour = datetime.now().hour
-
         for p in predictions:
 
+            # saat string -> int
             hour = int(p["hour"].split(":")[0])
 
+            # datetime oluştur
+            prediction_time = datetime.now().replace(
+                hour=hour, minute=0, second=0, microsecond=0
+            )
+
             # geçmiş saatleri atla
-            if hour <= current_hour:
+            if prediction_time <= datetime.now():
                 continue
 
             message = None
 
             for pollutant, value in p["pollutants"].items():
+
+                # value bazen dict olabilir
+                if isinstance(value, dict):
+                    value = value["value"]
 
                 aqi = compute_pollutant_aqi(pollutant, value)
 

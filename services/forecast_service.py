@@ -117,10 +117,11 @@ def get_next_7_hours(station_name: str = DEFAULT_STATION):
             JOIN istasyonlar i ON i.id = s.istasyon_id
             JOIN parametreler p ON p.id = s.parametre_id
             WHERE i.isim = %s
-              AND s.tarih_saat >= %s
-              AND s.tarih_saat < %s
+            AND s.tarih_saat >= %s
+            AND s.tarih_saat < %s
             ORDER BY s.tarih_saat
         """, (station_name, now, end_time))
+
         rows = db.fetchall()
 
     if not rows:
@@ -141,8 +142,6 @@ def get_next_7_hours(station_name: str = DEFAULT_STATION):
         "type": "next_7_hours",
         "hours": list(hourly.values())
     }
-
-
 # -------------------------
 # SEÇİLİ GÜN – SONRAKİ 7 SAAT
 # -------------------------
