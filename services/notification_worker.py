@@ -1,7 +1,7 @@
+from risk_engine import disease_sensitive, is_risky
 from database import get_db
 from services.forecast_service import get_7_hour_forecast
 from services.location_service import find_nearest_station
-from risk_engine import check_user_risk
 from notification_service import send_notification
 
 
