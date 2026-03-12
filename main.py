@@ -24,6 +24,7 @@ from services import emergency_service
 from scheduler import start_scheduler
 from services.notification_worker import run_notification_job
 
+
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -205,7 +206,14 @@ def update_device(data: UpdateDeviceRequest):
     return {"status": "ok"}
 
 
+
+
 @app.get("/test-notification")
 def test_notification():
+
+    with get_db() as db:
+        db.execute("DELETE FROM gonderilen_bildirimler")
+
     run_notification_job()
+
     return {"status": "notification job executed"}
