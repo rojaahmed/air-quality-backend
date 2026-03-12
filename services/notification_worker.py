@@ -39,23 +39,20 @@ def run_notification_job():
 
         for p in predictions:
 
-            # saat string -> int
             hour = int(p["hour"].split(":")[0])
 
-            # datetime oluştur
             prediction_time = datetime.now().replace(
                 hour=hour, minute=0, second=0, microsecond=0
             )
 
-            # geçmiş saatleri atla
             if prediction_time <= datetime.now():
                 continue
 
             message = None
 
             for pollutant, value in p["pollutants"].items():
+                print("Checking:", user_data["id"], hour, pollutant)
 
-                # value bazen dict olabilir
                 if isinstance(value, dict):
                     value = value["value"]
 
@@ -77,6 +74,25 @@ def run_notification_job():
                 message = check_user_risk(user_data, prediction)
 
                 if message:
+
+                    # 🔴 1️⃣ DAHA ÖNCE GÖNDERİLDİ Mİ KONTROL ET
+                    with get_db() as db:
+                        db.execute("""
+                        SELECT 1
+                        FROM gonderilen_bildirimler
+                        WHERE kullanici_id=%s
+                        AND saat=%s
+                        AND parametre=%s
+                        AND tarih=CURRENT_DATE
+                        """, (user_data["id"], hour, pollutant))
+
+                        sent = db.fetchone()
+
+                    if sent:
+                        print("Notification already sent")
+                        continue
+
+                    # 🔔 BİLDİRİM GÖNDER
                     send_notification(
                         user_data["firebase_token"],
                         "Hava Kalitesi Uyarısı",
@@ -84,7 +100,17 @@ def run_notification_job():
                     )
 
                     print(f"Notification sent to {user_data['id']}")
+
+                    # 🟢 2️⃣ GÖNDERİLDİ OLARAK KAYDET
+                    with get_db() as db:
+                        db.execute("""
+                        INSERT INTO gonderilen_bildirimler
+                        (kullanici_id, saat, parametre, tarih)
+                        VALUES (%s,%s,%s,CURRENT_DATE)
+                        """, (user_data["id"], hour, pollutant))
+
                     break
 
             if message:
                 break
+            
