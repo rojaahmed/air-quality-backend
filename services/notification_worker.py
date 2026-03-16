@@ -2,8 +2,8 @@ from database import get_db
 from services.location_service import find_nearest_station
 from services.notification_service import send_notification
 from services.forecast_service import get_next_7_hours
-from health_engine import check_user_risk
 from services.aqi_utils import compute_pollutant_aqi, aqi_category
+from health_rules import disease_sensitive, is_risky
 from datetime import datetime
 
 
@@ -34,6 +34,8 @@ def run_notification_job():
 
         station = find_nearest_station(lat, lon)
 
+        print("User:", user_data["id"], "Station:", station["name"])
+
         data = get_next_7_hours(station["name"])
         predictions = data["hours"]
 
@@ -48,10 +50,13 @@ def run_notification_job():
             if prediction_time <= datetime.now():
                 continue
 
-            message = None
+            print("Checking hour:", hour)
+
+            risky_pollutants = []
 
             for pollutant, value in p["pollutants"].items():
-                print("Checking:", user_data["id"], hour, pollutant)
+
+                print("Checking pollutant:", pollutant)
 
                 if isinstance(value, dict):
                     value = value["value"]
@@ -63,54 +68,58 @@ def run_notification_job():
 
                 category = aqi_category(aqi)
 
-                print(hour, pollutant, value, category)
+                print("AQI:", pollutant, value, category)
 
-                prediction = {
-                    "hour": hour,
-                    "pollutant": pollutant,
-                    "category": category
-                }
+                if disease_sensitive(user_data["kronik_hastalik"], pollutant) and is_risky(category):
 
-                message = check_user_risk(user_data, prediction)
+                    risky_pollutants.append((pollutant, category))
 
-                if message:
+            # Eğer riskli parametre varsa
+            if risky_pollutants:
 
-                    # 🔴 1️⃣ DAHA ÖNCE GÖNDERİLDİ Mİ KONTROL ET
-                    with get_db() as db:
-                        db.execute("""
-                        SELECT 1
-                        FROM gonderilen_bildirimler
-                        WHERE kullanici_id=%s
-                        AND saat=%s
-                        AND parametre=%s
-                        AND tarih=CURRENT_DATE
-                        """, (user_data["id"], hour, pollutant))
+                # Daha önce gönderilmiş mi kontrol et
+                with get_db() as db:
+                    db.execute("""
+                    SELECT 1
+                    FROM gonderilen_bildirimler
+                    WHERE kullanici_id=%s
+                    AND saat=%s
+                    AND tarih=CURRENT_DATE
+                    """, (user_data["id"], hour))
 
-                        sent = db.fetchone()
+                    sent = db.fetchone()
 
-                    if sent:
-                        print("Notification already sent")
-                        continue
+                if sent:
+                    print("Notification already sent")
+                    continue
 
-                    # 🔔 BİLDİRİM GÖNDER
-                    send_notification(
-                        user_data["firebase_token"],
-                        "Hava Kalitesi Uyarısı",
-                        message
-                    )
+                text = ""
 
-                    print(f"Notification sent to {user_data['id']}")
+                for pol, cat in risky_pollutants:
+                    text += f"{pol} seviyesi {cat}\n"
 
-                    # 🟢 2️⃣ GÖNDERİLDİ OLARAK KAYDET
-                    with get_db() as db:
-                        db.execute("""
-                        INSERT INTO gonderilen_bildirimler
-                        (kullanici_id, saat, parametre, tarih)
-                        VALUES (%s,%s,%s,CURRENT_DATE)
-                        """, (user_data["id"], hour, pollutant))
+                message = f"""
+⚠️ Hava Kalitesi Uyarısı
 
-                    break
+{hour:02d}:00 saatinde bulunduğunuz bölgede
 
-            if message:
-                break
-            
+{text}
+
+Sağlığınız için dikkatli olunması önerilir.
+"""
+
+                send_notification(
+                    user_data["firebase_token"],
+                    "Hava Kalitesi Uyarısı",
+                    message
+                )
+
+                print(f"Notification sent to {user_data['id']}")
+
+                # Gönderildi olarak kaydet
+                with get_db() as db:
+                    db.execute("""
+                    INSERT INTO gonderilen_bildirimler
+                    (kullanici_id, saat, tarih)
+                    VALUES (%s,%s,CURRENT_DATE)
+                    """, (user_data["id"], hour))
