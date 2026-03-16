@@ -98,13 +98,14 @@ def add_emergency_contact(user_id: int, data: dict):
 
         db.execute("""
             INSERT INTO acil_iletisimler
-            (kullanici_id, ad_soyad, telefon, yakinlik)
-            VALUES (%s,%s,%s,%s)
+            (kullanici_id, ad_soyad, telefon, yakinlik, firebase_token)
+            VALUES (%s,%s,%s,%s,%s)
         """,(
             user_id,
             data["name"],
             data["phone"],
-            data["relation"]
+            data["relation"],
+            data["firebase_token"]
         ))
 
     return True
