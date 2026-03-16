@@ -3,7 +3,7 @@ from services.location_service import find_nearest_station
 from services.notification_service import send_notification
 from services.forecast_service import get_next_7_hours
 from services.aqi_utils import compute_pollutant_aqi, aqi_category
-from health_rules import disease_sensitive, is_risky
+from health_engine import disease_sensitive, is_risky
 from datetime import datetime
 
 
