@@ -99,7 +99,11 @@ def get_station_trend(
                 "message": "Trend verisi bulunamadı"
             }
 
-        values = [float(r[0]) for r in rows if r[0] is not None]
+      values = [
+    float(r[0])
+    for r in rows
+    if r[0] is not None and str(r[0]).strip() != ""
+]
 
         if len(values) == 0:
             return {
