@@ -35,33 +35,20 @@ def generate_ai_comment(direction, risk):
         )
 
     if direction == "rising":
-        return (
-            "Hava kalitesinde yükselen kirlilik trendi gözlemlenmektedir."
-        )
+        return "Hava kalitesinde yükselen kirlilik trendi gözlemlenmektedir."
 
     if direction == "falling":
-        return (
-            "Hava kalitesi iyileşme eğilimindedir."
-        )
+        return "Hava kalitesi iyileşme eğilimindedir."
 
-    return (
-        "Hava kalitesi stabil seyretmektedir."
-    )
+    return "Hava kalitesi stabil seyretmektedir."
 
 
-def get_station_trend(
-    station_id: int,
-    parametre_id: int,
-    trend_type: str
-):
+def get_station_trend(station_id: int, parametre_id: int, trend_type: str):
 
     with get_db() as db:
 
-        # =========================
         # DAILY
-        # =========================
         if trend_type == "daily":
-
             db.execute("""
                 SELECT tahmin
                 FROM gunluk_tahmin_gecmis
@@ -69,16 +56,10 @@ def get_station_trend(
                 AND parametre_id=%s
                 ORDER BY tahmin_tarihi DESC
                 LIMIT 7
-            """, (
-                station_id,
-                parametre_id
-            ))
+            """, (station_id, parametre_id))
 
-        # =========================
         # HOURLY
-        # =========================
         else:
-
             db.execute("""
                 SELECT tahmin
                 FROM saatlik_tahmin_gecmis
@@ -86,10 +67,7 @@ def get_station_trend(
                 AND parametre_id=%s
                 ORDER BY tarih_saat DESC
                 LIMIT 24
-            """, (
-                station_id,
-                parametre_id
-            ))
+            """, (station_id, parametre_id))
 
         rows = db.fetchall()
 
@@ -99,11 +77,12 @@ def get_station_trend(
                 "message": "Trend verisi bulunamadı"
             }
 
-      values = [
-    float(r[0])
-    for r in rows
-    if r[0] is not None and str(r[0]).strip() != ""
-]
+        # ✅ FIXED INDENTATION + SAFE CONVERSION
+        values = [
+            float(r[0])
+            for r in rows
+            if r[0] is not None and str(r[0]).strip() != ""
+        ]
 
         if len(values) == 0:
             return {
