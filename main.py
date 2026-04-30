@@ -1,3 +1,6 @@
+from fastapi import WebSocket
+import asyncio
+import json
 from fastapi import FastAPI, HTTPException
 from database import get_db
 from models import KullaniciCreate, LoginRequest
@@ -23,7 +26,7 @@ from services.aqi_services import compute_station_aqi
 from services import emergency_service
 from scheduler import start_scheduler
 from services.notification_worker import run_notification_job
-
+from services.trend_service import get_station_trend
 
 app = FastAPI()
 @app.on_event("startup")
@@ -217,3 +220,76 @@ def test_notification():
     run_notification_job()
 
     return {"status": "notification job executed"}
+
+@app.get("/trend-analysis-by-location-all")
+def trend_analysis_by_location_all(
+    lat: float,
+    lon: float,
+    trend_type: str = "daily"
+):
+
+    if trend_type not in ["daily", "hourly"]:
+        raise HTTPException(
+            status_code=400,
+            detail="trend_type daily veya hourly olmalı"
+        )
+
+    station = find_nearest_station(lat, lon)
+
+    if not station:
+        raise HTTPException(status_code=404, detail="İstasyon bulunamadı")
+
+    # 🔥 BURASI KRİTİK: TÜM PARAMETRELER
+    PARAMETRELER = [1, 2, 3, 4]  # PM10, PM2.5, NO2, CO (örnek)
+
+    results = []
+
+    for parametre_id in PARAMETRELER:
+
+        trend = get_station_trend(
+            station["id"],
+            parametre_id,
+            trend_type
+        )
+
+        results.append({
+            "parametre_id": parametre_id,
+            "data": trend
+        })
+
+    return {
+        "station": station,
+        "trends": results
+    }
+@app.websocket("/ws/aqi")
+async def websocket_aqi(websocket: WebSocket):
+
+    await websocket.accept()
+
+    lat = float(websocket.query_params.get("lat"))
+    lon = float(websocket.query_params.get("lon"))
+
+    PARAMETRELER = [1, 2, 3, 4]
+
+    while True:
+
+        station = find_nearest_station(lat, lon)
+
+        results = []
+
+        for parametre_id in PARAMETRELER:
+
+            data = get_station_trend(
+                station["id"],
+                parametre_id,
+                "hourly"
+            )
+
+            results.append({
+                "parametre_id": parametre_id,
+                "data": data
+            })
+
+        await websocket.send_text(json.dumps(results))
+
+        await asyncio.sleep(10)
