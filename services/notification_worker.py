@@ -48,9 +48,12 @@ def run_notification_job():
             if prediction_time <= datetime.now():
                 continue
 
-            message = None
+            best_message = None
+            highest_aqi = -1
+            best_pollutant = None
 
             for pollutant, value in p["pollutants"].items():
+
                 print("Checking:", user_data["id"], hour, pollutant)
 
                 if isinstance(value, dict):
@@ -73,44 +76,53 @@ def run_notification_job():
 
                 message = check_user_risk(user_data, prediction)
 
-                if message:
+                # EN YÜKSEK AQI'Yİ SEÇ
+                if message and aqi > highest_aqi:
+                    highest_aqi = aqi
+                    best_message = message
+                    best_pollutant = pollutant
 
-                    # 🔴 1️⃣ DAHA ÖNCE GÖNDERİLDİ Mİ KONTROL ET
-                    with get_db() as db:
-                        db.execute("""
-                        SELECT 1
-                        FROM gonderilen_bildirimler
-                        WHERE kullanici_id=%s
-                        AND saat=%s
-                        AND parametre=%s
-                        AND tarih=CURRENT_DATE
-                        """, (user_data["id"], hour, pollutant))
+            # TÜM POLLUTANTLAR BİTTİKTEN SONRA GÖNDER
+            if best_message:
 
-                        sent = db.fetchone()
+                # 🔴 DAHA ÖNCE GÖNDERİLDİ Mİ?
+                with get_db() as db:
+                    db.execute("""
+                    SELECT 1
+                    FROM gonderilen_bildirimler
+                    WHERE kullanici_id=%s
+                    AND saat=%s
+                    AND parametre=%s
+                    AND tarih=CURRENT_DATE
+                    """, (
+                        user_data["id"],
+                        hour,
+                        best_pollutant
+                    ))
 
-                    if sent:
-                        print("Notification already sent")
-                        continue
+                    sent = db.fetchone()
 
-                    # 🔔 BİLDİRİM GÖNDER
-                    send_notification(
-                        user_data["firebase_token"],
-                        "Hava Kalitesi Uyarısı",
-                        message
-                    )
+                if sent:
+                    print("Notification already sent")
+                    continue
 
-                    print(f"Notification sent to {user_data['id']}")
+                # 🔔 BİLDİRİM GÖNDER
+                send_notification(
+                    user_data["firebase_token"],
+                    "Hava Kalitesi Uyarısı",
+                    best_message
+                )
 
-                    # 🟢 2️⃣ GÖNDERİLDİ OLARAK KAYDET
-                    with get_db() as db:
-                        db.execute("""
-                        INSERT INTO gonderilen_bildirimler
-                        (kullanici_id, saat, parametre, tarih)
-                        VALUES (%s,%s,%s,CURRENT_DATE)
-                        """, (user_data["id"], hour, pollutant))
+                print(f"Notification sent to {user_data['id']}")
 
-                    break
-
-            if message:
-                break
-            
+                # 🟢 GÖNDERİLDİ OLARAK KAYDET
+                with get_db() as db:
+                    db.execute("""
+                    INSERT INTO gonderilen_bildirimler
+                    (kullanici_id, saat, parametre, tarih)
+                    VALUES (%s,%s,%s,CURRENT_DATE)
+                    """, (
+                        user_data["id"],
+                        hour,
+                        best_pollutant
+                    ))

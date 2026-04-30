@@ -1,8 +1,8 @@
 import psycopg2
 from contextlib import contextmanager
+import os
 
-DATABASE_URL = "postgresql://postgres.lgfomuqhuyehqbrwmwoq:Rojda45670%2A%25@aws-1-eu-west-1.pooler.supabase.com:5432/postgres"
-
+DATABASE_URL = os.getenv("DATABASE_URL")
 @contextmanager
 def get_db():
     conn = psycopg2.connect(DATABASE_URL)

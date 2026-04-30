@@ -26,7 +26,7 @@ class EmergencyRequest(BaseModel):
 
 # -----------------------
 # Acil kişi ekleme
-# -----------------------
+# ----------------------- 
 
 @router.post("/add_emergency")
 def add_contact(data: EmergencyContact):
