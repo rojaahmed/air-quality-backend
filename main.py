@@ -221,6 +221,48 @@ def test_notification():
 
     return {"status": "notification job executed"}
 
+@app.get("/trend-analysis-long")
+def trend_analysis_long(
+    station_id: int,
+    parametre_id: int
+):
+
+    with get_db() as db:
+
+        db.execute("""
+            SELECT tahmin
+            FROM gunluk_tahmin_gecmis
+            WHERE istasyon_id=%s
+            AND parametre_id=%s
+            ORDER BY tahmin_tarihi DESC
+            LIMIT 30
+        """, (station_id, parametre_id))
+
+        rows = db.fetchall()
+
+    values = [float(r[0]) for r in rows if r[0] is not None]
+
+    if not values:
+        return {
+            "status": "empty",
+            "message": "Uzun dönem veri yok",
+            "values": []
+        }
+
+    values.reverse()
+
+    avg = sum(values) / len(values)
+    direction = "rising" if values[-1] > values[0] else "falling"
+
+    return {
+        "station_id": station_id,
+        "parametre_id": parametre_id,
+        "type": "long_term",
+        "average": avg,
+        "direction": direction,
+        "values": values
+    }
+
 @app.get("/trend-analysis-by-location-all")
 def trend_analysis_by_location_all(
     lat: float,
@@ -266,8 +308,12 @@ async def websocket_aqi(websocket: WebSocket):
 
     await websocket.accept()
 
-    lat = float(websocket.query_params.get("lat"))
-    lon = float(websocket.query_params.get("lon"))
+    lat = float(websocket.query_params.get("lat", 0))
+    lon = float(websocket.query_params.get("lon", 0))
+
+    if lat == 0 or lon == 0:
+      await websocket.close()
+      return
 
     PARAMETRELER = [1, 2, 3, 4]
 
@@ -290,6 +336,11 @@ async def websocket_aqi(websocket: WebSocket):
                 "data": data
             })
 
-        await websocket.send_text(json.dumps(results))
+        await websocket.send_text(
+    json.dumps({
+        "station_id": station["id"],
+        "values": results
+    })
+)
 
         await asyncio.sleep(10)
