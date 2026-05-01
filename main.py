@@ -27,6 +27,7 @@ from services import emergency_service
 from scheduler import start_scheduler
 from services.notification_worker import run_notification_job
 from services.trend_service import get_station_trend
+from services.drift_service import analyze_model_drift
 
 app = FastAPI()
 @app.on_event("startup")
@@ -360,3 +361,10 @@ def get_shap_data():
         data = json.load(f)
 
     return data
+
+@app.get("/model-drift")
+def get_model_drift():
+
+    result = analyze_model_drift()
+
+    return result
