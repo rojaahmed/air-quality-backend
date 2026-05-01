@@ -352,15 +352,22 @@ import os
 @app.get("/shap-data")
 def get_shap_data():
 
-    file_path = "data/gunluk_tahmin_catboost.json"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-    print("PATH:", os.path.abspath(file_path))
+    file_path = os.path.join(
+        BASE_DIR,
+        "..",
+        "data",
+        "gunluk_tahmin_catboost.json"
+    )
+
+    print("PATH:", file_path)
     print("EXISTS:", os.path.exists(file_path))
 
     if not os.path.exists(file_path):
         return {
             "error": "Dosya bulunamadı",
-            "path": os.path.abspath(file_path)
+            "path": file_path
         }
 
     with open(file_path, "r", encoding="utf-8") as f:
