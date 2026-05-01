@@ -346,15 +346,24 @@ async def websocket_aqi(websocket: WebSocket):
         await asyncio.sleep(10)
 
 
+import json
+import os
+
 @app.get("/shap-data")
 def get_shap_data():
 
-    with open(
-        "data/gunluk_tahmin_catboost.json",
-        "r",
-        encoding="utf-8"
-    ) as f:
+    file_path = "data/gunluk_tahmin_catboost.json"
 
+    print("PATH:", os.path.abspath(file_path))
+    print("EXISTS:", os.path.exists(file_path))
+
+    if not os.path.exists(file_path):
+        return {
+            "error": "Dosya bulunamadı",
+            "path": os.path.abspath(file_path)
+        }
+
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     return data
