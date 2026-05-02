@@ -143,14 +143,12 @@ def _process_user(user):
 
                 highest_aqi = aqi
 
-                best_message = f"""
-{message}
-
-Risk Skoru: {score}/100
-Risk Durumu: {level}
-
-Son 3 Gün Maruziyet: {exposure_count}
-"""
+                best_message = (
+    f"{message}\n\n"
+    f"Risk Skoru: {score}/100\n"
+    f"Risk Durumu: {level}\n"
+    f"Son 3 Gün Maruziyet: {exposure_count}"
+)
 
                 best_pollutant = pollutant
 
@@ -179,12 +177,13 @@ Son 3 Gün Maruziyet: {exposure_count}
                 )
 
                 continue
-
+            print(best_message)
             send_notification(
                 user_data["firebase_token"],
-                "Hava Kalitesi Uyarısı",
+                f"Hava Kalitesi Uyarısı {hour}",
                 best_message
             )
+
 
             print(
                 f"Bildirim gönderildi: kullanıcı={user_data['id']} saat={hour}"
