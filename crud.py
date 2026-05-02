@@ -23,17 +23,18 @@ def create_user(data: dict):
         # Kullanıcı ekleme
         db.execute("""
             INSERT INTO kullanicilar 
-            (isim, email, sifre, dogum_tarihi, cinsiyet, kronik_hastalik, olusturma_tarihi)
-            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            (isim, email, sifre, dogum_tarihi, cinsiyet, kronik_hastalik, yas, olusturma_tarihi)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             RETURNING id
         """, (
-            data["isim"],
-            data["email"],
-            hashed,
-            data["dogum_tarihi"],
-            data.get("cinsiyet"),
-            data.get("kronik_hastalik")
-        ))
+    data["isim"],
+    data["email"],
+    hashed,
+    data["dogum_tarihi"],
+    data.get("cinsiyet"),
+    data.get("kronik_hastalik"),
+    data.get("yas")
+))
 
         user_id = db.fetchone()[0]  # 👈 MUTLAKA with İÇİNDE
 

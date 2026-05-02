@@ -14,7 +14,7 @@ def run_notification_job():
 
     with get_db() as db:
         db.execute("""
-            SELECT id, kronik_hastalik, firebase_token, latitude, longitude
+            SELECT id, kronik_hastalik, yas, firebase_token, latitude, longitude
             FROM kullanicilar
             WHERE firebase_token IS NOT NULL
         """)
@@ -30,9 +30,10 @@ def _process_user(user):
     user_data = {
         "id": user[0],
         "kronik_hastalik": user[1],
-        "firebase_token": user[2],
-        "latitude": user[3],
-        "longitude": user[4]
+        "yas": user[2],
+        "firebase_token": user[3],
+        "latitude": user[4],
+        "longitude": user[5]
     }
 
     station = find_nearest_station(user_data["latitude"], user_data["longitude"])

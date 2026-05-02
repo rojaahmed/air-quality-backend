@@ -11,6 +11,7 @@ class KullaniciCreate(BaseModel):
     dogum_tarihi: date
     cinsiyet: str
     kronik_hastalik: Optional[str] = "Yok"
+    yas: int
 
 class LoginRequest(BaseModel):
     email: EmailStr
