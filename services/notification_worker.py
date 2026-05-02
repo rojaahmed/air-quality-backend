@@ -114,7 +114,10 @@ def _process_user(user):
                 user_data,
                 prediction
             )
-
+            print("MESSAGE:", message)
+            print("AQI:", aqi)
+            print("CATEGORY:", category)
+           
             # 🔥 YENİ RİSK SİSTEMİ
             with get_db() as db:
 
