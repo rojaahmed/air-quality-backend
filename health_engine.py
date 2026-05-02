@@ -20,12 +20,9 @@ def check_user_risk(user, prediction):
 
     message = f"""
 ⚠️ Hava Kalitesi Uyarısı
-
 {hour:02d}:00 saatinde bulunduğunuz bölgede
 {pollutant} seviyesi {category} seviyesine çıkacak.
-
 {disease} hastaları için risk oluşturabilir.
-
 Maske kullanmanız ve dışarıda uzun süre kalmamanız önerilir.
 """
 
