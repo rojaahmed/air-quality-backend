@@ -29,6 +29,7 @@ from services.notification_worker import run_notification_job
 from services.trend_service import get_station_trend
 from services.drift_service import analyze_model_drift
 from services.nearby_health_service import get_nearby_health_places
+from services.carbon_service import calculate_carbon_footprint
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -377,3 +378,25 @@ def nearby_health(lat: float, lon: float):
     except Exception as e:
         print(f"[ENDPOINT] /nearby-health hata: {e}")
         raise HTTPException(status_code=503, detail="Sağlık noktaları şu an alınamıyor")
+
+
+class CarbonRequest(BaseModel):
+    car_km: float
+    electricity: float
+    flight_hours: float
+    meat_meals: float
+    public_transport_km: float
+
+
+@app.post("/carbon-footprint")
+def carbon_footprint(data: CarbonRequest):
+
+    result = calculate_carbon_footprint(
+        data.car_km,
+        data.electricity,
+        data.flight_hours,
+        data.meat_meals,
+        data.public_transport_km
+    )
+
+    return result
