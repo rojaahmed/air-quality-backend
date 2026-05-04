@@ -14,44 +14,41 @@ def build_query(lat, lon):
   nwr["amenity"="hospital"](around:10000,{lat},{lon});
   nwr["amenity"="pharmacy"](around:10000,{lat},{lon});
 );
-out center tags;
+out center;
 """
-
-def format_address(tags):
-    """OSM tag'lerinden adres oluştur, yoksa boş döndür."""
-    street = tags.get("addr:street", "")
-    number = tags.get("addr:housenumber", "")
-    district = tags.get("addr:district", "") or tags.get("addr:suburb", "")
-    city = tags.get("addr:city", "") or tags.get("addr:province", "")
-
-    parts = []
-    if street:
-        parts.append(f"{street} {number}".strip())
-    if district:
-        parts.append(district)
-    if city:
-        parts.append(city)
-
-    return ", ".join(parts) if parts else ""
 
 def fetch_from_overpass(lat, lon):
     query = build_query(lat, lon)
+    last_error = None
+
     for url in OVERPASS_ENDPOINTS:
         try:
             response = requests.get(
                 url,
                 params={"data": query},
-                timeout=35,
+                timeout=35,  # Overpass timeout'undan büyük olmalı
                 headers={"User-Agent": "AirQualityApp/1.0"},
             )
+
             if response.status_code == 200:
                 return response.json()
+
             print(f"[OVERPASS] {url} → {response.status_code}")
+
         except requests.exceptions.Timeout:
             print(f"[OVERPASS] {url} → Timeout")
+            last_error = "timeout"
+
+        except requests.exceptions.ConnectionError as e:
+            print(f"[OVERPASS] {url} → ConnectionError: {e}")
+            last_error = str(e)
+
         except Exception as e:
             print(f"[OVERPASS] {url} → Hata: {e}")
-    raise RuntimeError("Tüm Overpass endpointleri başarısız")
+            last_error = str(e)
+
+    raise RuntimeError(f"Tüm Overpass endpointleri başarısız. Son hata: {last_error}")
+
 
 def parse_elements(data, lat, lon):
     hospitals = []
@@ -74,7 +71,10 @@ def parse_elements(data, lat, lon):
             continue
 
         distance = haversine(lat, lon, place_lat, place_lon)
-        address = format_address(tags)
+
+        address = (
+            tags.get("addr:street", "") + " " + tags.get("addr:housenumber", "")
+        ).strip()
 
         item = {
             "name": tags.get("name", "İsimsiz"),
@@ -82,13 +82,12 @@ def parse_elements(data, lat, lon):
             "lat": place_lat,
             "lon": place_lon,
             "distance": round(distance / 1000, 2),
-            # Adres yoksa koordinatı göster — en azından kullanıcı bir şey görür
-            "address": address if address else f"{round(place_lat,4)}, {round(place_lon,4)}",
+            "address": address if address else "Adres bilgisi yok",
         }
 
         if amenity == "hospital":
             hospitals.append(item)
-        else:
+        elif amenity == "pharmacy":
             pharmacies.append(item)
 
     hospitals.sort(key=lambda x: x["distance"])
@@ -98,10 +97,11 @@ def parse_elements(data, lat, lon):
     results.sort(key=lambda x: x["distance"])
     return results
 
+
 def get_nearby_health_places(lat, lon):
     try:
         data = fetch_from_overpass(lat, lon)
         return parse_elements(data, lat, lon)
     except Exception as e:
         print(f"[NEARBY HEALTH] Kritik hata: {e}")
-        return []
+        return []  # boş liste döndür, 500 verme
