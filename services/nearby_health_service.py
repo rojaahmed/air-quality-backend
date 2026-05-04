@@ -17,38 +17,54 @@ def build_query(lat, lon):
 out center;
 """
 
+def reverse_geocode(lat, lon):
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={
+                "lat": lat,
+                "lon": lon,
+                "format": "json",
+                "addressdetails": 1,
+            },
+            headers={"User-Agent": "AirQualityApp/1.0"},
+            timeout=5,
+        )
+        if r.status_code == 200:
+            data = r.json()
+            addr = data.get("address", {})
+            parts = [
+                addr.get("road", ""),
+                addr.get("house_number", ""),
+                addr.get("suburb", ""),
+                addr.get("district", ""),
+            ]
+            return ", ".join(p for p in parts if p).strip(", ") or "Adres bulunamadı"
+    except Exception as e:
+        print(f"[GEOCODE] Hata: {e}")
+    return "Adres bulunamadı"
+
 def fetch_from_overpass(lat, lon):
     query = build_query(lat, lon)
     last_error = None
-
     for url in OVERPASS_ENDPOINTS:
         try:
             response = requests.get(
                 url,
                 params={"data": query},
-                timeout=35,  # Overpass timeout'undan büyük olmalı
+                timeout=35,
                 headers={"User-Agent": "AirQualityApp/1.0"},
             )
-
             if response.status_code == 200:
                 return response.json()
-
             print(f"[OVERPASS] {url} → {response.status_code}")
-
         except requests.exceptions.Timeout:
             print(f"[OVERPASS] {url} → Timeout")
             last_error = "timeout"
-
-        except requests.exceptions.ConnectionError as e:
-            print(f"[OVERPASS] {url} → ConnectionError: {e}")
-            last_error = str(e)
-
         except Exception as e:
             print(f"[OVERPASS] {url} → Hata: {e}")
             last_error = str(e)
-
-    raise RuntimeError(f"Tüm Overpass endpointleri başarısız. Son hata: {last_error}")
-
+    raise RuntimeError(f"Tüm endpointler başarısız: {last_error}")
 
 def parse_elements(data, lat, lon):
     hospitals = []
@@ -72,9 +88,15 @@ def parse_elements(data, lat, lon):
 
         distance = haversine(lat, lon, place_lat, place_lon)
 
+        # Önce OSM tag'lerinden dene
         address = (
-            tags.get("addr:street", "") + " " + tags.get("addr:housenumber", "")
+            tags.get("addr:street", "") + " " +
+            tags.get("addr:housenumber", "")
         ).strip()
+
+        # OSM'de yoksa Nominatim'den çek
+        if not address:
+            address = reverse_geocode(place_lat, place_lon)
 
         item = {
             "name": tags.get("name", "İsimsiz"),
@@ -82,12 +104,12 @@ def parse_elements(data, lat, lon):
             "lat": place_lat,
             "lon": place_lon,
             "distance": round(distance / 1000, 2),
-            "address": address if address else "Adres bilgisi yok",
+            "address": address,
         }
 
         if amenity == "hospital":
             hospitals.append(item)
-        elif amenity == "pharmacy":
+        else:
             pharmacies.append(item)
 
     hospitals.sort(key=lambda x: x["distance"])
@@ -97,11 +119,10 @@ def parse_elements(data, lat, lon):
     results.sort(key=lambda x: x["distance"])
     return results
 
-
 def get_nearby_health_places(lat, lon):
     try:
         data = fetch_from_overpass(lat, lon)
         return parse_elements(data, lat, lon)
     except Exception as e:
         print(f"[NEARBY HEALTH] Kritik hata: {e}")
-        return []  # boş liste döndür, 500 verme
+        return []
