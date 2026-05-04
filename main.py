@@ -370,16 +370,10 @@ def get_model_drift():
     return result
 
 @app.get("/nearby-health")
-def nearby_health(
-    lat: float,
-    lon: float
-):
-
-    data = get_nearby_health_places(
-        lat,
-        lon
-    )
-
-    return {
-        "results": data
-    }
+def nearby_health(lat: float, lon: float):
+    try:
+        data = get_nearby_health_places(lat, lon)
+        return {"results": data}
+    except Exception as e:
+        print(f"[ENDPOINT] /nearby-health hata: {e}")
+        raise HTTPException(status_code=503, detail="Sağlık noktaları şu an alınamıyor")
