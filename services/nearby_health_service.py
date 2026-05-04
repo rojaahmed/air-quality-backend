@@ -1,8 +1,7 @@
 import requests
 from utils1 import haversine
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-
+OVERPASS_URL = "https://overpass.kumi.systems/api/interpreter"
 
 def get_nearby_health_places(lat, lon):
 
@@ -20,6 +19,7 @@ out center;
         params={"data": query},
         timeout=20
     )
+    print(response.text)
 
     if response.status_code != 200:
         return []
