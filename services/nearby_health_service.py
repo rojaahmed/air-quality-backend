@@ -42,9 +42,12 @@ out center;
         if "lat" in element:
             place_lat = element["lat"]
             place_lon = element["lon"]
-        else:
+
+        elif "center" in element:
             place_lat = element["center"]["lat"]
             place_lon = element["center"]["lon"]
+        else:
+            continue
 
         tags = element.get("tags", {})
 
@@ -79,7 +82,7 @@ out center;
     hospitals.sort(key=lambda x: x["distance"])
     pharmacies.sort(key=lambda x: x["distance"])
 
-    results = hospitals[:5] + pharmacies[:5]
+    results = hospitals[:10] + pharmacies[:10]
 
     results.sort(key=lambda x: x["distance"])
 
