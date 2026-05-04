@@ -3,6 +3,7 @@ from utils1 import haversine
 
 OVERPASS_URL = "https://overpass.kumi.systems/api/interpreter"
 
+
 def get_nearby_health_places(lat, lon):
 
     query = f"""
@@ -19,6 +20,7 @@ out center;
         params={"data": query},
         timeout=20
     )
+
     print(response.text)
 
     if response.status_code != 200:
@@ -32,6 +34,8 @@ out center;
     print(data)
 
     results = []
+    pharmacies = []
+    hospitals = []
 
     for element in data["elements"]:
 
@@ -57,14 +61,25 @@ out center;
             tags.get("addr:housenumber", "")
         ).strip()
 
-        results.append({
+        item = {
             "name": tags.get("name", "İsimsiz"),
             "type": tags.get("amenity"),
             "lat": place_lat,
             "lon": place_lon,
             "distance": round(distance / 1000, 2),
             "address": address
-        })
+        }
+
+        if item["type"] == "hospital":
+            hospitals.append(item)
+
+        elif item["type"] == "pharmacy":
+            pharmacies.append(item)
+
+    hospitals.sort(key=lambda x: x["distance"])
+    pharmacies.sort(key=lambda x: x["distance"])
+
+    results = hospitals[:5] + pharmacies[:5]
 
     results.sort(key=lambda x: x["distance"])
 
