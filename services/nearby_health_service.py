@@ -6,17 +6,11 @@ OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 def get_nearby_health_places(lat, lon):
 
-  
     query = f"""
-[out:json];
+[out:json][timeout:25];
 (
-  node["amenity"="hospital"](around:3000,{lat},{lon});
-  way["amenity"="hospital"](around:3000,{lat},{lon});
-  relation["amenity"="hospital"](around:3000,{lat},{lon});
-
-  node["amenity"="pharmacy"](around:3000,{lat},{lon});
-  way["amenity"="pharmacy"](around:3000,{lat},{lon});
-  relation["amenity"="pharmacy"](around:3000,{lat},{lon});
+  nwr["amenity"="hospital"](around:10000,{lat},{lon});
+  nwr["amenity"="pharmacy"](around:10000,{lat},{lon});
 );
 out center;
 """
@@ -32,16 +26,21 @@ out center;
 
     data = response.json()
 
+    if "elements" not in data:
+        return []
+
+    print(data)
+
     results = []
 
     for element in data["elements"]:
 
         if "lat" in element:
-         place_lat = element["lat"]
-         place_lon = element["lon"]
+            place_lat = element["lat"]
+            place_lon = element["lon"]
         else:
-         place_lat = element["center"]["lat"]
-         place_lon = element["center"]["lon"]
+            place_lat = element["center"]["lat"]
+            place_lon = element["center"]["lon"]
 
         tags = element.get("tags", {})
 
