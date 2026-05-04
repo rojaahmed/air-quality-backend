@@ -14,39 +14,28 @@ def build_query(lat, lon):
   nwr["amenity"="hospital"](around:10000,{lat},{lon});
   nwr["amenity"="pharmacy"](around:10000,{lat},{lon});
 );
-out center;
+out center tags;
 """
 
-def reverse_geocode(lat, lon):
-    try:
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/reverse",
-            params={
-                "lat": lat,
-                "lon": lon,
-                "format": "json",
-                "addressdetails": 1,
-            },
-            headers={"User-Agent": "AirQualityApp/1.0"},
-            timeout=5,
-        )
-        if r.status_code == 200:
-            data = r.json()
-            addr = data.get("address", {})
-            parts = [
-                addr.get("road", ""),
-                addr.get("house_number", ""),
-                addr.get("suburb", ""),
-                addr.get("district", ""),
-            ]
-            return ", ".join(p for p in parts if p).strip(", ") or "Adres bulunamadı"
-    except Exception as e:
-        print(f"[GEOCODE] Hata: {e}")
-    return "Adres bulunamadı"
+def format_address(tags):
+    """OSM tag'lerinden adres oluştur, yoksa boş döndür."""
+    street = tags.get("addr:street", "")
+    number = tags.get("addr:housenumber", "")
+    district = tags.get("addr:district", "") or tags.get("addr:suburb", "")
+    city = tags.get("addr:city", "") or tags.get("addr:province", "")
+
+    parts = []
+    if street:
+        parts.append(f"{street} {number}".strip())
+    if district:
+        parts.append(district)
+    if city:
+        parts.append(city)
+
+    return ", ".join(parts) if parts else ""
 
 def fetch_from_overpass(lat, lon):
     query = build_query(lat, lon)
-    last_error = None
     for url in OVERPASS_ENDPOINTS:
         try:
             response = requests.get(
@@ -60,11 +49,9 @@ def fetch_from_overpass(lat, lon):
             print(f"[OVERPASS] {url} → {response.status_code}")
         except requests.exceptions.Timeout:
             print(f"[OVERPASS] {url} → Timeout")
-            last_error = "timeout"
         except Exception as e:
             print(f"[OVERPASS] {url} → Hata: {e}")
-            last_error = str(e)
-    raise RuntimeError(f"Tüm endpointler başarısız: {last_error}")
+    raise RuntimeError("Tüm Overpass endpointleri başarısız")
 
 def parse_elements(data, lat, lon):
     hospitals = []
@@ -87,16 +74,7 @@ def parse_elements(data, lat, lon):
             continue
 
         distance = haversine(lat, lon, place_lat, place_lon)
-
-        # Önce OSM tag'lerinden dene
-        address = (
-            tags.get("addr:street", "") + " " +
-            tags.get("addr:housenumber", "")
-        ).strip()
-
-        # OSM'de yoksa Nominatim'den çek
-        if not address:
-            address = reverse_geocode(place_lat, place_lon)
+        address = format_address(tags)
 
         item = {
             "name": tags.get("name", "İsimsiz"),
@@ -104,7 +82,8 @@ def parse_elements(data, lat, lon):
             "lat": place_lat,
             "lon": place_lon,
             "distance": round(distance / 1000, 2),
-            "address": address,
+            # Adres yoksa koordinatı göster — en azından kullanıcı bir şey görür
+            "address": address if address else f"{round(place_lat,4)}, {round(place_lon,4)}",
         }
 
         if amenity == "hospital":
