@@ -33,7 +33,6 @@ out center;
         if "elements" not in data:
             return []
 
-        results = []
         pharmacies = []
         hospitals = []
 
@@ -90,5 +89,7 @@ out center;
         return results
 
     except Exception as e:
+
         print("HEALTH SERVICE ERROR:", e)
+
         return []
