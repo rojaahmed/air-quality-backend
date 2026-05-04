@@ -28,7 +28,7 @@ from scheduler import start_scheduler
 from services.notification_worker import run_notification_job
 from services.trend_service import get_station_trend
 from services.drift_service import analyze_model_drift
-
+from services.nearby_health_service import get_nearby_health_places
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -368,3 +368,18 @@ def get_model_drift():
     result = analyze_model_drift()
 
     return result
+
+@app.get("/nearby-health")
+def nearby_health(
+    lat: float,
+    lon: float
+):
+
+    data = get_nearby_health_places(
+        lat,
+        lon
+    )
+
+    return {
+        "results": data
+    }
