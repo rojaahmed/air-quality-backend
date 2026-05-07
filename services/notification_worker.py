@@ -64,21 +64,15 @@ def _process_user(user):
     # 🔥 DİNAMİK ANOMALİ ERKEN UYARI SİSTEMİ
     # =====================================================
 
-    # PARAMETRE ID -> İSİM MAP
-    PARAM_NAME_MAP = {
-        1: "PM10",
-        2: "O3",
-        3: "SO2",
-        4: "CO"
-    }
-
     # 🔥 SADECE O İSTASYONDA OLAN PARAMETRELER
     with get_db() as db:
 
         db.execute("""
-            SELECT parametre_id
-            FROM istasyon_parametreleri
-            WHERE istasyon_id=%s
+            SELECT p.id, p.isim
+            FROM istasyon_parametreleri ip
+            JOIN parametreler p
+            ON p.id = ip.parametre_id
+            WHERE ip.istasyon_id=%s
         """, (station["id"],))
 
         station_parameters = db.fetchall()
@@ -87,15 +81,8 @@ def _process_user(user):
         f"İSTASYON PARAMETRELERİ: {station_parameters}"
     )
 
-    # HER PARAMETRE İÇİN ANALİZ
-    for param_row in station_parameters:
-
-        parametre_id = param_row[0]
-
-        pollutant_name = PARAM_NAME_MAP.get(
-            parametre_id,
-            f"Parametre-{parametre_id}"
-        )
+    # 🔥 HER PARAMETRE İÇİN ANALİZ
+    for parametre_id, pollutant_name in station_parameters:
 
         try:
 

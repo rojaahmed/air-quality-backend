@@ -11,31 +11,56 @@ def detect_anomaly(values):
 
     try:
 
+        # TRAIN
+        train = values[:-1]
+
+        # GERÇEK DEĞER
+        actual = float(values[-1])
+
+        # MODEL
         model = SARIMAX(
-            values,
+            train,
             order=(1,1,1),
             seasonal_order=(1,1,1,24)
         )
 
         model_fit = model.fit(disp=False)
 
-        forecast = model_fit.forecast(steps=1)
+        # =========================
+        # PROFESYONEL FORECAST
+        # =========================
 
-        predicted = float(forecast[0])
+        forecast_obj = model_fit.get_forecast(steps=1)
 
-        actual = float(values[-1])
+        predicted = float(
+            forecast_obj.predicted_mean[0]
+        )
+
+        conf_int = forecast_obj.conf_int()
+
+        lower_bound = float(conf_int.iloc[0, 0])
+        upper_bound = float(conf_int.iloc[0, 1])
+
+        # INTERVAL DIŞIYSA ANOMALİ
+        is_anomaly = (
+            actual < lower_bound or
+            actual > upper_bound
+        )
 
         difference = abs(actual - predicted)
 
-        threshold = np.std(values) * 2
-
-        is_anomaly = difference > threshold
-
         return {
+
             "predicted": round(predicted, 2),
+
             "actual": round(actual, 2),
+
             "difference": round(difference, 2),
-            "threshold": round(threshold, 2),
+
+            "lower_bound": round(lower_bound, 2),
+
+            "upper_bound": round(upper_bound, 2),
+
             "is_anomaly": bool(is_anomaly)
         }
 
