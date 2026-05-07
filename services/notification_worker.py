@@ -11,6 +11,8 @@ from services.health_score import (
     risk_level
 )
 
+from services.anomaly_service import detect_anomaly
+
 NOTIFY_WINDOW_MIN = 0
 NOTIFY_WINDOW_MAX = 90
 
@@ -57,6 +59,145 @@ def _process_user(user):
 
     data = get_next_7_hours(station["name"])
 
+    # =====================================================
+    # 🔥 GERÇEK SARIMA / ARIMA TABANLI
+    # 🔥 DİNAMİK ANOMALİ ERKEN UYARI SİSTEMİ
+    # =====================================================
+
+    # PARAMETRE ID -> İSİM MAP
+    PARAM_NAME_MAP = {
+        1: "PM10",
+        2: "O3",
+        3: "SO2",
+        4: "CO"
+    }
+
+    # 🔥 SADECE O İSTASYONDA OLAN PARAMETRELER
+    with get_db() as db:
+
+        db.execute("""
+            SELECT parametre_id
+            FROM istasyon_parametreleri
+            WHERE istasyon_id=%s
+        """, (station["id"],))
+
+        station_parameters = db.fetchall()
+
+    print(
+        f"İSTASYON PARAMETRELERİ: {station_parameters}"
+    )
+
+    # HER PARAMETRE İÇİN ANALİZ
+    for param_row in station_parameters:
+
+        parametre_id = param_row[0]
+
+        pollutant_name = PARAM_NAME_MAP.get(
+            parametre_id,
+            f"Parametre-{parametre_id}"
+        )
+
+        try:
+
+            # 🔥 GEÇMİŞ VERİLERİ ÇEK
+            with get_db() as db:
+
+                db.execute("""
+                    SELECT tahmin
+                    FROM saatlik_tahmin_gecmis
+                    WHERE istasyon_id=%s
+                    AND parametre_id=%s
+                    ORDER BY tarih_saat DESC
+                    LIMIT 48
+                """, (
+                    station["id"],
+                    parametre_id
+                ))
+
+                rows = db.fetchall()
+
+            values = [
+                float(r[0])
+                for r in rows
+                if r[0] is not None
+            ]
+
+            values.reverse()
+
+            print(
+                f"{pollutant_name} VALUES COUNT:",
+                len(values)
+            )
+
+            print(
+                f"{pollutant_name} VALUES:",
+                values[-5:] if values else []
+            )
+
+            # 🔥 YETERLİ VERİ KONTROLÜ
+            if len(values) < 24:
+
+                print(
+                    f"{pollutant_name} için yeterli veri yok"
+                )
+
+                continue
+
+            # 🔥 SARIMA / ARIMA ANOMALİ ANALİZİ
+            anomaly = detect_anomaly(values)
+
+            print(
+                f"ANOMALY RESULT {pollutant_name}:",
+                anomaly
+            )
+
+            # 🔥 ANOMALİ VARSA PUSH GÖNDER
+            if anomaly.get("is_anomaly"):
+
+                predicted = anomaly.get("predicted")
+                actual = anomaly.get("actual")
+                difference = anomaly.get("difference")
+                threshold = anomaly.get("threshold")
+
+                send_notification(
+                    user_data["firebase_token"],
+                    f"🚨 {pollutant_name} Anomali Uyarısı",
+                    (
+                        f"{pollutant_name} seviyesinde "
+                        f"ani hava kirliliği artışı algılandı.\n\n"
+
+                        f"Tahmin: {predicted}\n"
+                        f"Gerçek: {actual}\n"
+                        f"Fark: {difference}\n"
+                        f"Eşik: {threshold}\n\n"
+
+                        f"Lütfen dış ortamda uzun süre kalmayın."
+                    )
+                )
+
+                print(
+                    f"ANOMALİ BİLDİRİMİ GÖNDERİLDİ: "
+                    f"{pollutant_name}"
+                )
+
+            else:
+
+                print(
+                    f"{pollutant_name} için anomali yok"
+                )
+
+        except Exception as e:
+
+            print(
+                f"ANOMALİ HATASI "
+                f"{pollutant_name}: {e}"
+            )
+
+    # =====================================================
+    # 🔥 ESKİ KİŞİSEL UYARI SİSTEMİ
+    # 🔥 HİÇ DEĞİŞMEDİ
+    # =====================================================
+
     for p in data["hours"]:
 
         now = datetime.now()
@@ -79,7 +220,7 @@ def _process_user(user):
 
         if not (
             timedelta(minutes=NOTIFY_WINDOW_MIN)
-           <= time_until <=
+            <= time_until <=
             timedelta(minutes=NOTIFY_WINDOW_MAX)
         ):
             continue
@@ -109,16 +250,17 @@ def _process_user(user):
                 "category": category
             }
 
-            # 🔥 ESKİ SİSTEM
+            # 🔥 ESKİ RİSK SİSTEMİ
             message = check_user_risk(
                 user_data,
                 prediction
             )
+
             print("MESSAGE:", message)
             print("AQI:", aqi)
             print("CATEGORY:", category)
-           
-            # 🔥 YENİ RİSK SİSTEMİ
+
+            # 🔥 HEALTH SCORE
             with get_db() as db:
 
                 db.execute("""
@@ -138,17 +280,17 @@ def _process_user(user):
 
             level = risk_level(score)
 
-            # 🔥 ESKİ SİSTEM DEVAM EDİYOR
+            # 🔥 EN YÜKSEK AQI
             if message and aqi > highest_aqi:
 
                 highest_aqi = aqi
 
                 best_message = (
-    f"{message}\n\n"
-    f"Risk Skoru: {score}/100\n"
-    f"Risk Durumu: {level}\n"
-    f"Son 3 Gün Maruziyet: {exposure_count}"
-)
+                    f"{message}\n\n"
+                    f"Risk Skoru: {score}/100\n"
+                    f"Risk Durumu: {level}\n"
+                    f"Son 3 Gün Maruziyet: {exposure_count}"
+                )
 
                 best_pollutant = pollutant
 
@@ -177,13 +319,14 @@ def _process_user(user):
                 )
 
                 continue
+
             print(best_message)
+
             send_notification(
                 user_data["firebase_token"],
                 f"Hava Kalitesi Uyarısı {hour}",
                 best_message
             )
-
 
             print(
                 f"Bildirim gönderildi: kullanıcı={user_data['id']} saat={hour}"

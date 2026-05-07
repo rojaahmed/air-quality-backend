@@ -30,6 +30,7 @@ from services.trend_service import get_station_trend
 from services.drift_service import analyze_model_drift
 from services.nearby_health_service import get_nearby_health_places
 from services.carbon_service import calculate_carbon_footprint
+from services.anomaly_service import detect_anomaly
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -398,5 +399,39 @@ def carbon_footprint(data: CarbonRequest):
         data.meat_meals,
         data.public_transport_km
     )
+
+    return result
+
+@app.get("/anomaly-detection")
+def anomaly_detection(
+    station_id: int,
+    parametre_id: int
+):
+
+    with get_db() as db:
+
+        db.execute("""
+            SELECT tahmin
+            FROM saatlik_tahmin_gecmis
+            WHERE istasyon_id=%s
+            AND parametre_id=%s
+            ORDER BY tarih_saat DESC
+            LIMIT 48
+        """, (
+            station_id,
+            parametre_id
+        ))
+
+        rows = db.fetchall()
+
+    values = [
+        float(r[0])
+        for r in rows
+        if r[0] is not None
+    ]
+
+    values.reverse()
+
+    result = detect_anomaly(values)
 
     return result
