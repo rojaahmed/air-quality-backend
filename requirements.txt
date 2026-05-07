@@ -19,3 +19,5 @@ osmnx
 networkx
 firebase-admin
 apscheduler
+statsmodels
+scipy
