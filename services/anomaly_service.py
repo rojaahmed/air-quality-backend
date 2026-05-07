@@ -11,60 +11,100 @@ def detect_anomaly(values):
 
     try:
 
-        # TRAIN
+        # =========================
+        # TRAIN / TEST AYIR
+        # =========================
+
         train = values[:-1]
 
-        # GERÇEK DEĞER
+        # GERÇEK SON DEĞER
         actual = float(values[-1])
 
-        # MODEL
+        # =========================
+        # SARIMA MODELİ
+        # =========================
+
         model = SARIMAX(
             train,
-            order=(1,1,1),
-            seasonal_order=(1,1,1,24)
+            order=(1, 1, 1),
+            seasonal_order=(1, 1, 1, 24)
         )
 
         model_fit = model.fit(disp=False)
 
         # =========================
-        # PROFESYONEL FORECAST
+        # 1 ADIMLIK FORECAST
         # =========================
 
-        forecast_obj = model_fit.get_forecast(steps=1)
+        forecast_obj = model_fit.get_forecast(
+            steps=1
+        )
 
         predicted = float(
             forecast_obj.predicted_mean[0]
         )
 
+        # =========================
+        # CONFIDENCE INTERVAL
+        # =========================
+
         conf_int = forecast_obj.conf_int()
 
-        lower_bound = float(conf_int.iloc[0, 0])
-        upper_bound = float(conf_int.iloc[0, 1])
+        lower_bound = float(
+            conf_int[0][0]
+        )
 
-        # INTERVAL DIŞIYSA ANOMALİ
+        upper_bound = float(
+            conf_int[0][1]
+        )
+
+        # =========================
+        # ANOMALİ KONTROLÜ
+        # =========================
+
         is_anomaly = (
             actual < lower_bound or
             actual > upper_bound
         )
 
-        difference = abs(actual - predicted)
+        # SAPMA
+        difference = abs(
+            actual - predicted
+        )
 
         return {
 
-            "predicted": round(predicted, 2),
+            "predicted": round(
+                predicted, 2
+            ),
 
-            "actual": round(actual, 2),
+            "actual": round(
+                actual, 2
+            ),
 
-            "difference": round(difference, 2),
+            "difference": round(
+                difference, 2
+            ),
 
-            "lower_bound": round(lower_bound, 2),
+            "lower_bound": round(
+                lower_bound, 2
+            ),
 
-            "upper_bound": round(upper_bound, 2),
+            "upper_bound": round(
+                upper_bound, 2
+            ),
 
-            "is_anomaly": bool(is_anomaly)
+            "is_anomaly": bool(
+                is_anomaly
+            )
         }
 
     except Exception as e:
+
+        print(
+            "ANOMALY ERROR:",
+            str(e)
+        )
 
         return {
             "error": str(e)
