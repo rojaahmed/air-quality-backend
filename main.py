@@ -31,6 +31,7 @@ from services.drift_service import analyze_model_drift
 from services.nearby_health_service import get_nearby_health_places
 from services.carbon_service import calculate_carbon_footprint
 from services.anomaly_service import detect_anomaly
+from services.risk_report_service import generate_risk_report
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -435,3 +436,14 @@ def anomaly_detection(
     result = detect_anomaly(values)
 
     return result
+
+
+@app.get("/risk-report")
+def risk_report(
+    station: str,
+    disease: str
+):
+    return generate_risk_report(
+    station,
+    [disease]
+)
