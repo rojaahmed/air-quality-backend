@@ -146,6 +146,38 @@ def _process_user(user):
                 difference = anomaly.get("difference")
                 threshold = anomaly.get("threshold")
 
+                # ==================================================
+                # AYNI ANOMALİ DAHA ÖNCE GÖNDERİLDİ Mİ
+                # ==================================================
+
+                with get_db() as db:
+
+                    db.execute("""
+                        SELECT 1
+                        FROM anomaly_notifications
+                        WHERE kullanici_id=%s
+                        AND istasyon_id=%s
+                        AND parametre_id=%s
+                        AND anomaly_value=%s
+                    """, (
+                        user_data["id"],
+                        station["id"],
+                        parametre_id,
+                        actual
+                    ))
+
+                    already_sent = db.fetchone()
+
+                if already_sent:
+
+                    print("Anomali zaten gönderildi")
+
+                    continue
+
+                # ==================================================
+                # PUSH GÖNDER
+                # ==================================================
+
                 send_notification(
                     user_data["firebase_token"],
                     f"🚨 {pollutant_name} Anomali Uyarısı",
@@ -161,6 +193,27 @@ def _process_user(user):
                         f"Lütfen dış ortamda uzun süre kalmayın."
                     )
                 )
+
+                # ==================================================
+                # LOG KAYDI
+                # ==================================================
+
+                with get_db() as db:
+
+                    db.execute("""
+                        INSERT INTO anomaly_notifications (
+                            kullanici_id,
+                            istasyon_id,
+                            parametre_id,
+                            anomaly_value
+                        )
+                        VALUES (%s, %s, %s, %s)
+                    """, (
+                        user_data["id"],
+                        station["id"],
+                        parametre_id,
+                        actual
+                    ))
 
                 print(
                     f"ANOMALİ BİLDİRİMİ GÖNDERİLDİ: "
@@ -268,7 +321,12 @@ def _process_user(user):
             level = risk_level(score)
 
             # 🔥 EN YÜKSEK AQI
-            if message and aqi > highest_aqi:
+            if aqi > highest_aqi:
+
+                if not message:
+                    message = (
+                        f"{pollutant} seviyeleri izleniyor."
+                    )
 
                 highest_aqi = aqi
 
