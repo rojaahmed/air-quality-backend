@@ -409,6 +409,10 @@ def anomaly_detection(
     parametre_id: int
 ):
 
+    # =====================================================
+    # GEÇMİŞ VERİLER
+    # =====================================================
+
     with get_db() as db:
 
         db.execute("""
@@ -425,6 +429,10 @@ def anomaly_detection(
 
         rows = db.fetchall()
 
+    # =====================================================
+    # VALUE LIST
+    # =====================================================
+
     values = [
         float(r[0])
         for r in rows
@@ -433,7 +441,51 @@ def anomaly_detection(
 
     values.reverse()
 
-    result = detect_anomaly(values)
+    # =====================================================
+    # ANOMALY DETECTION
+    # =====================================================
+
+    result = detect_anomaly(
+        values,
+        station_id,
+        parametre_id
+    )
+
+    # =====================================================
+    # POLLUTANT NAME
+    # =====================================================
+
+    with get_db() as db:
+
+        db.execute("""
+            SELECT isim
+            FROM parametreler
+            WHERE id=%s
+        """, (parametre_id,))
+
+        parametre = db.fetchone()
+
+    pollutant_name = (
+
+        parametre[0]
+
+        if parametre
+
+        else "Unknown"
+
+    )
+
+    # =====================================================
+    # RESPONSE EXTRA DATA
+    # =====================================================
+
+    result["pollutant"] = pollutant_name
+    result["station_id"] = station_id
+    result["parametre_id"] = parametre_id
+
+    # =====================================================
+    # RETURN
+    # =====================================================
 
     return result
 

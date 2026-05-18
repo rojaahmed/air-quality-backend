@@ -21,3 +21,4 @@ firebase-admin
 apscheduler
 statsmodels
 scipy
+pmdarima

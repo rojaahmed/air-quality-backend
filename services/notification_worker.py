@@ -16,6 +16,12 @@ from services.anomaly_service import detect_anomaly
 NOTIFY_WINDOW_MIN = 0
 NOTIFY_WINDOW_MAX = 90
 
+# =====================================================
+# ANOMALY COUNTER
+# =====================================================
+
+ANOMALY_COUNTER = {}
+
 
 def run_notification_job():
 
@@ -64,7 +70,6 @@ def _process_user(user):
     # 🔥 DİNAMİK ANOMALİ ERKEN UYARI SİSTEMİ
     # =====================================================
 
-    # 🔥 SADECE O İSTASYONDA OLAN PARAMETRELER
     with get_db() as db:
 
         db.execute("""
@@ -81,12 +86,18 @@ def _process_user(user):
         f"İSTASYON PARAMETRELERİ: {station_parameters}"
     )
 
-    # 🔥 HER PARAMETRE İÇİN ANALİZ
+    # =====================================================
+    # HER PARAMETRE İÇİN ANOMALY ANALİZİ
+    # =====================================================
+
     for parametre_id, pollutant_name in station_parameters:
 
         try:
 
-            # 🔥 GEÇMİŞ VERİLERİ ÇEK
+            # =====================================================
+            # GEÇMİŞ VERİLER
+            # =====================================================
+
             with get_db() as db:
 
                 db.execute("""
@@ -121,7 +132,10 @@ def _process_user(user):
                 values[-5:] if values else []
             )
 
-            # 🔥 YETERLİ VERİ KONTROLÜ
+            # =====================================================
+            # YETERLİ VERİ KONTROLÜ
+            # =====================================================
+
             if len(values) < 24:
 
                 print(
@@ -130,33 +144,89 @@ def _process_user(user):
 
                 continue
 
-            # 🔥 SARIMA / ARIMA ANOMALİ ANALİZİ
-            anomaly = detect_anomaly(values)
+            # =====================================================
+            # ANOMALY DETECTION
+            # =====================================================
+
+            anomaly = detect_anomaly(
+                values,
+                station["id"],
+                parametre_id
+            )
 
             print(
                 f"ANOMALY RESULT {pollutant_name}:",
                 anomaly
             )
 
-            # 🔥 ANOMALİ VARSA PUSH GÖNDER
+            # =====================================================
+            # CACHE KEY
+            # =====================================================
+
+            key = (
+                f"{station['id']}_{parametre_id}"
+            )
+
+            # =====================================================
+            # ANOMALY COUNTER
+            # =====================================================
+
             if anomaly.get("is_anomaly"):
 
+                ANOMALY_COUNTER[key] = (
+
+                    ANOMALY_COUNTER.get(key, 0) + 1
+
+                )
+
+            else:
+
+                ANOMALY_COUNTER[key] = 0
+
+            print(
+                f"ANOMALY COUNTER {key}:",
+                ANOMALY_COUNTER[key]
+            )
+
+            # =====================================================
+            # 2 ARDIŞIK ANOMALİ ŞARTI
+            # =====================================================
+
+            if ANOMALY_COUNTER[key] >= 2:
+
                 predicted = anomaly.get("predicted")
+
                 actual = anomaly.get("actual")
+
                 difference = anomaly.get("difference")
-                threshold = anomaly.get("threshold")
+
+                difference_percent = anomaly.get(
+                    "difference_percent"
+                )
+
+                severity = anomaly.get(
+                    "severity"
+                )
 
                 send_notification(
+
                     user_data["firebase_token"],
+
                     f"🚨 {pollutant_name} Anomali Uyarısı",
+
                     (
                         f"{pollutant_name} seviyesinde "
-                        f"ani hava kirliliği artışı algılandı.\n\n"
+                        f"anormal hava değişimi algılandı.\n\n"
 
-                        f"Tahmin: {predicted}\n"
+                        f"Beklenen: {predicted}\n"
+
                         f"Gerçek: {actual}\n"
+
                         f"Fark: {difference}\n"
-                        f"Eşik: {threshold}\n\n"
+
+                        f"Sapma: %{difference_percent}\n"
+
+                        f"Risk: {severity}\n\n"
 
                         f"Lütfen dış ortamda uzun süre kalmayın."
                     )
@@ -167,10 +237,17 @@ def _process_user(user):
                     f"{pollutant_name}"
                 )
 
+                # =====================================================
+                # COUNTER RESET
+                # =====================================================
+
+                ANOMALY_COUNTER[key] = 0
+
             else:
 
                 print(
-                    f"{pollutant_name} için anomali yok"
+                    f"{pollutant_name} için "
+                    f"henüz yeterli anomaly yok"
                 )
 
         except Exception as e:
@@ -237,7 +314,10 @@ def _process_user(user):
                 "category": category
             }
 
-            # 🔥 ESKİ RİSK SİSTEMİ
+            # =====================================================
+            # ESKİ RİSK SİSTEMİ
+            # =====================================================
+
             message = check_user_risk(
                 user_data,
                 prediction
@@ -247,7 +327,10 @@ def _process_user(user):
             print("AQI:", aqi)
             print("CATEGORY:", category)
 
-            # 🔥 HEALTH SCORE
+            # =====================================================
+            # HEALTH SCORE
+            # =====================================================
+
             with get_db() as db:
 
                 db.execute("""
@@ -267,12 +350,17 @@ def _process_user(user):
 
             level = risk_level(score)
 
-            # 🔥 EN YÜKSEK AQI
+            # =====================================================
+            # EN YÜKSEK AQI
+            # =====================================================
+
             if aqi > highest_aqi:
+
                 if not message:
-                  message = (
-                   f"{pollutant} seviyeleri izleniyor."
-                  )
+
+                    message = (
+                        f"{pollutant} seviyeleri izleniyor."
+                    )
 
                 highest_aqi = aqi
 
