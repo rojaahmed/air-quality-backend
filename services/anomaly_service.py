@@ -69,7 +69,7 @@ def detect_anomaly(
 
                 error_action="ignore",
 
-                trace=False
+                trace=False,
                 stepwise=True
 
             )
