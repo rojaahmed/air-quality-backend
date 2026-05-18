@@ -282,12 +282,12 @@ def _process_user(user):
 
         time_until = prediction_dt - now
 
-        if not (
-            timedelta(minutes=NOTIFY_WINDOW_MIN)
-            <= time_until <=
-            timedelta(minutes=NOTIFY_WINDOW_MAX)
-        ):
-            continue
+      #  if not (
+          #  timedelta(minutes=NOTIFY_WINDOW_MIN)
+          #  <= time_until <=
+          #  timedelta(minutes=NOTIFY_WINDOW_MAX)
+      #  ):
+        #    continue
 
         best_message = None
         highest_aqi = -1
