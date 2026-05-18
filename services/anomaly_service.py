@@ -63,15 +63,14 @@ def detect_anomaly(
 
                 train,
 
-                seasonal=True,
-
-                m=24,
+                seasonal=False,
 
                 suppress_warnings=True,
 
                 error_action="ignore",
 
                 trace=False
+                stepwise=True
 
             )
 
