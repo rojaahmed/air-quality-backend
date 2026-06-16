@@ -32,6 +32,7 @@ from services.nearby_health_service import get_nearby_health_places
 from services.carbon_service import calculate_carbon_footprint
 from services.anomaly_service import detect_anomaly
 from services.risk_report_service import generate_risk_report
+from services.simulation_service import simulate_air_quality
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -499,3 +500,23 @@ def risk_report(
     station,
     [disease]
 )
+
+class SimulationRequest(BaseModel):
+
+    activity: str
+    age: int
+    disease: str
+    aqi: int
+
+@app.post("/air-quality-simulation")
+def air_quality_simulation(
+        data: SimulationRequest):
+
+    return simulate_air_quality(
+
+        data.activity,
+        data.age,
+        data.disease,
+        data.aqi
+
+    )
