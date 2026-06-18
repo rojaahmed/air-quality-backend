@@ -8,7 +8,49 @@ LIMITS = {
     "CO": 9
 }
 
+def classify_hours(hour_data):
 
+    safe_hours = []
+    moderate_hours = []
+    danger_hours = []
+
+    for hour, values in hour_data.items():
+
+        score = 0
+
+        for pollutant, value in values.items():
+
+            limit = LIMITS.get(pollutant)
+
+            if limit and value > limit:
+                score += 1
+
+        if score == 0:
+
+            safe_hours.append({
+                "hour": hour,
+                "category": "Temiz"
+            })
+
+        elif score <= 2:
+
+            moderate_hours.append({
+                "hour": hour,
+                "category": "Orta"
+            })
+
+        else:
+
+            danger_hours.append({
+                "hour": hour,
+                "category": "Kirli"
+            })
+
+    return {
+        "safe_hours": safe_hours,
+        "moderate_hours": moderate_hours,
+        "danger_hours": danger_hours
+    }
 def calculate_risk_level(values):
 
     score = 0
@@ -113,7 +155,7 @@ def generate_ai_health_report(
 
         latest_values[pollutant] = float(value)
 
-    safe_ranges = generate_safe_ranges(hour_data)
+    hour_categories = classify_hours(hour_data)
 
     risk_level = calculate_risk_level(latest_values)
 
@@ -155,7 +197,9 @@ def generate_ai_health_report(
 
         "risk_level": risk_level,
 
-        "safe_ranges": safe_ranges,
+        "safe_hours": hour_categories["safe_hours"],
+        "moderate_hours": hour_categories["moderate_hours"],
+        "danger_hours": hour_categories["danger_hours"],
 
         "pollutants": latest_values
 
