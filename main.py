@@ -34,6 +34,7 @@ from services.anomaly_service import detect_anomaly
 from services.risk_report_service import generate_risk_report
 from services.simulation_service import simulate_air_quality
 from services.ai_health_report_service import generate_ai_health_report
+from services.manual_test_service import analyze_manual_test
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -533,4 +534,27 @@ def ai_health_report(
         station_id,
         disease,
         user_name
+    )
+
+
+class ManualTestRequest(BaseModel):
+
+    pm10: float
+    so2: float
+    co: float
+    o3: float
+    exposure_hours: float
+    disease: str
+
+@app.post("/manual-air-quality-test")
+def manual_air_quality_test(
+        data: ManualTestRequest):
+
+    return analyze_manual_test(
+        data.pm10,
+        data.so2,
+        data.co,
+        data.o3,
+        data.exposure_hours,
+        data.disease
     )
