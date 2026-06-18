@@ -33,6 +33,7 @@ from services.carbon_service import calculate_carbon_footprint
 from services.anomaly_service import detect_anomaly
 from services.risk_report_service import generate_risk_report
 from services.simulation_service import simulate_air_quality
+from services.ai_health_report_service import generate_ai_health_report
 app = FastAPI()
 @app.on_event("startup")
 def start_jobs():
@@ -519,4 +520,17 @@ def air_quality_simulation(
         data.disease,
         data.aqi
 
+    )
+
+@app.get("/ai-health-report")
+def ai_health_report(
+        station_id: int,
+        disease: str,
+        user_name: str
+):
+
+    return generate_ai_health_report(
+        station_id,
+        disease,
+        user_name
     )
